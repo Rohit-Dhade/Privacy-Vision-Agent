@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Vision Agent</title>
+  <!-- Google Fonts & Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body class="pv-body">
+  <div class="pv-container">
+    <!-- TopAppBar Header -->
+    <header class="pv-header">
+      <div class="pv-brand">
+        <span class="material-symbols-outlined pv-shield-icon">shield</span>
+        <h1 class="pv-title">Privacy Vision Agent</h1>
+      </div>
+      <div class="pv-header-actions">
+        <button id="settingsBtn" class="pv-icon-btn" title="Backend settings" aria-label="Backend settings">
+          <span class="material-symbols-outlined">settings</span>
+        </button>
+        <button id="closeBtn" class="pv-icon-btn pv-close-btn" title="Close" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Sub-header Status Indicator Bar -->
+    <div class="pv-status-bar">
+      <div class="pv-status-indicator">
+        <div id="statusDot" class="pv-status-dot"></div>
+        <span id="statusBarText" class="pv-status-text">LOCAL SCAN ACTIVE</span>
+      </div>
+    </div>
+
+    <!-- Main Scrollable Content -->
+    <main class="pv-main">
+      <!-- Settings Panel (Collapsible) -->
+      <section id="settingsPanel" class="pv-card pv-settings-card" hidden>
+        <div class="pv-card-header">
+          <span class="material-symbols-outlined">tune</span>
+          <span class="pv-card-title">Backend Configuration</span>
+        </div>
+        <div class="pv-card-body">
+          <label class="pv-label" for="backendUrlInput">Backend Endpoint</label>
+          <input id="backendUrlInput" type="text" class="pv-input" placeholder="http://localhost:8787/api/agent/decide" />
+          <div class="pv-settings-row">
+            <button id="saveBackendBtn" class="pv-btn pv-btn-secondary">Save Configuration</button>
+            <span id="backendSavedNote" class="pv-status-note" hidden>Saved.</span>
+          </div>
+          <p class="pv-hint">
+            Only the redacted screenshot and a sanitized element list are sent here — never raw PII, never the original screenshot.
+          </p>
+        </div>
+      </section>
+
+      <!-- Task Prompt Area -->
+      <section class="pv-card pv-input-card">
+        <div class="pv-input-wrapper">
+          <textarea id="taskInput" class="pv-textarea" rows="2" placeholder="Describe what you'd like help with..."></textarea>
+          <div class="pv-input-actions">
+            <button id="sendBtn" class="pv-btn pv-btn-primary">
+              <span>Send</span>
+              <span class="material-symbols-outlined">send</span>
+            </button>
+          </div>
+        </div>
+        <p id="errorLine" class="pv-error-banner" hidden></p>
+      </section>
+
+      <!-- Interactive Feed / Chat Log -->
+      <section id="chatLog" class="pv-chat-log" aria-live="polite"></section>
+
+      <!-- Inline Action Required / User Input Form Section -->
+      <section id="userInputSection" class="pv-card pv-action-required-card" hidden>
+        <div class="pv-action-required-header">
+          <div class="pv-action-title-row">
+            <span class="material-symbols-outlined pv-lock-icon">lock</span>
+            <div>
+              <h2 class="pv-card-title">ACTION REQUIRED</h2>
+              <p class="pv-action-subtitle">Secure input needed to proceed.</p>
+            </div>
+          </div>
+        </div>
+        <div id="userInputContainer" class="pv-user-input-container"></div>
+      </section>
+
+      <!-- Page Analysis & Redaction Summary (Collapsible Panel) -->
+      <details id="detailsPanel" class="pv-card pv-details-card" hidden>
+        <summary class="pv-details-summary">
+          <div class="pv-summary-title-wrapper">
+            <span class="material-symbols-outlined">analytics</span>
+            <span>Page Summary & Redaction Details</span>
+          </div>
+          <span class="material-symbols-outlined pv-chevron">expand_more</span>
+        </summary>
+
+        <div class="pv-details-content">
+          <!-- Summary Metrics -->
+          <div class="pv-metrics-grid">
+            <div class="pv-metric-box">
+              <strong id="countElements" class="pv-metric-val">0</strong>
+              <span class="pv-metric-lbl">interactive elements</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="countSensitive" class="pv-metric-val">0</strong>
+              <span class="pv-metric-lbl">sensitive items</span>
+            </div>
+          </div>
+
+          <!-- Screenshot Canvas Panel -->
+          <div class="pv-subpanel">
+            <div class="pv-subpanel-header">
+              <span class="material-symbols-outlined">visibility_off</span>
+              <span class="pv-subpanel-title">Redacted Screenshot Preview</span>
+            </div>
+            <div class="pv-canvas-container">
+              <canvas id="screenshotCanvas" class="pv-screenshot-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Interactive Elements List -->
+          <details class="pv-subdetails">
+            <summary><span class="material-symbols-outlined">ads_click</span> Interactive Elements</summary>
+            <div id="elementsList" class="pv-list"></div>
+            <pre id="elementsJson" class="pv-json-code"></pre>
+          </details>
+
+          <!-- Visible Text -->
+          <details class="pv-subdetails">
+            <summary><span class="material-symbols-outlined">description</span> Visible Text</summary>
+            <pre id="visibleTextJson" class="pv-json-code"></pre>
+          </details>
+
+          <!-- Sensitive Information -->
+          <details class="pv-subdetails">
+            <summary><span class="material-symbols-outlined">security</span> Sensitive Information Detected</summary>
+            <div id="sensitiveList" class="pv-list"></div>
+          </details>
+
+          <!-- Agent State -->
+          <details class="pv-subdetails">
+            <summary><span class="material-symbols-outlined">memory</span> Internal Agent State</summary>
+            <div id="agentStateLine" class="pv-mono-line">IDLE</div>
+          </details>
+        </div>
+      </details>
+    </main>
+
+    <!-- Footer Component -->
+    <footer class="pv-footer">
+      <span class="pv-footer-text">Local model: active | Server: Pixtral (cloud)</span>
+    </footer>
+  </div>
+
+  <!-- Shared utils (order matters: dependencies first) -->
+  <script src="../utils/logger.js"></script>
+  <script src="../utils/geometry.js"></script>
+
+  <!-- Agent architecture -->
+  <script src="../agent/stateManager.js"></script>
+  <script src="../agent/taskManager.js"></script>
+  <script src="../agent/agentBackend.js"></script>
+  <script src="../agent/agentController.js"></script>
+  <script src="../agent/userInputManager.js"></script>
+
+  <!-- Screenshot coordinate mapping + redaction -->
+  <script src="../content/coordinateMapper.js"></script>
+  <script src="../content/redactor.js"></script>
+
+  <script src="popup.js"></script>
+</body>
+</html>
