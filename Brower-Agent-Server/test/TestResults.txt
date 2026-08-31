@@ -1,0 +1,94 @@
+Test 1: The happy path (regression check)
+
+curl -X POST http://localhost:5000/api/agent/step \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "sanity-1",
+    "taskInstruction": "Click the submit button",
+    "capturedAt": 1735210001234,
+    "screenshot": { "format": "png", "dataBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "width": 1, "height": 1 },
+    "domSkeleton": { "url": "https://example.com", "elements": [{"id":"el_1","tag":"button","selector":"#submit-btn","box":{"x":10,"y":10,"width":80,"height":30},"sensitive":false}] },
+    "redactionMap": [],
+    "actionHistory": []
+  }'
+
+Results :
+
+{"success":true,"action":{"action":"click","targetSelector":"#submit-btn","value":null,"reasoning":"The DOM skeleton explicitly identifies a non-sensitive button element with the selector **#submit-btn** and the task is to click the submit button. No sensitive fields are involved, and the element is clearly defined for interaction."}}
+
+
+Test 2: Malformed JSON — tests Express's own error path → your errorMiddleware
+
+curl -X POST http://localhost:5000/api/agent/step \
+  -H "Content-Type: application/json" \
+  -d '{invalid json'
+
+Results:
+
+{"success":false,"message":"Expected property name or '}' in JSON at position 1 (line 1 column 2)"}
+
+Test 3: Schema rejection — wrong type for a required field
+
+curl -X POST http://localhost:5000/api/agent/step \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": 12345,
+    "taskInstruction": "Click the submit button",
+    "capturedAt": 1735210001234,
+    "screenshot": { "format": "png", "dataBase64": "abc", "width": 1, "height": 1 },
+    "domSkeleton": { "url": "not-a-valid-url", "elements": [] },
+    "redactionMap": [],
+    "actionHistory": []
+  }'
+
+{"success":false,"message":"Invalid request body","errors":[{"expected":"string","code":"invalid_type","path":["sessionId"],"message":"Invalid input: expected string, received number"},{"code":"invalid_format","format":"url","path":["domSkeleton","url"],"message":"Invalid URL"}]}
+
+Test 4: A field the DOM skeleton says doesn't exist
+
+curl -X POST http://localhost:5000/api/agent/step \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "sanity-5",
+    "taskInstruction": "Click a button that does not exist called #ghost-button",
+    "capturedAt": 1735210001234,
+    "screenshot": { "format": "png", "dataBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "width": 1, "height": 1 },
+    "domSkeleton": { "url": "https://example.com", "elements": [{"id":"el_1","tag":"button","selector":"#submit-btn","box":{"x":10,"y":10,"width":80,"height":30},"sensitive":false}] },
+    "redactionMap": [],
+    "actionHistory": []
+  }'
+
+Result:
+
+{"success":true,"action":{"action":"done","targetSelector":null,"value":null,"reasoning":"The task requires interacting with a button (#ghost-button) that does not exist in the DOM skeleton. No valid actionable elements match the task's requirements, and no further UI actions can progress this task."}}
+
+
+Test 5: Session continuity check.
+
+curl -X POST http://localhost:5000/api/agent/step \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                "sessionId": "sanity-1",
+                "taskInstruction": "Click the submit button",
+                "capturedAt": 1735210001234,
+                "screenshot": { "format": "png", "dataBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "width": 1, "height": 1 },
+                "domSkeleton": { "url": "https://example.com", "elements": [{"id":"el_1","tag":"button","selector":"#submit-btn","box":{"x":10,"y":10,"width":80,"height":30},"sensitive":false}] },
+                "redactionMap": [],
+                "actionHistory": []
+              }'
+
+
+Result : 
+
+With same session-Id
+
+[SESSION CHECK] sessionId=sanity-1 history.length=0
+[SESSION CHECK] sessionId=sanity-1 history.length=1
+[SESSION CHECK] sessionId=sanity-1 history.length=2
+[SESSION CHECK] sessionId=sanity-1 history.length=3
+
+With different session-Id
+
+[SESSION CHECK] sessionId=sanity-99 history.length=0
+[SESSION CHECK] sessionId=sanity-99 history.length=1
+[SESSION CHECK] sessionId=sanity-99 history.length=2
+[SESSION CHECK] sessionId=sanity-99 history.length=3
