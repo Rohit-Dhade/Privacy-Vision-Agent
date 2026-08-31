@@ -201,12 +201,11 @@ html, body.pv-body {
   min-height: 0; /* CRITICAL: Enables CSS flexbox vertical scrolling */
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 14px;
+  padding: 12px 14px 16px; /* no extra bottom pad — action panel is outside */
   display: flex;
   flex-direction: column;
   gap: 12px;
   background-color: var(--pv-surface);
-  padding-bottom: 48px; /* space for fixed footer */
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
@@ -586,11 +585,20 @@ html, body.pv-body {
   color: var(--pv-on-surface-variant);
 }
 
-/* Action Required Card (ask_user state) */
+/* Action Required Panel — sits OUTSIDE pv-main so it never scrolls away */
 .pv-action-required-card {
-  padding: 12px;
-  border-left: 3px solid var(--pv-primary-container);
-  background-color: #ffffff;
+  flex-shrink: 0;            /* never shrink inside the flex column */
+  padding: 12px 14px;
+  border-top: 2px solid var(--pv-primary-container);
+  border-left: none;
+  background-color: var(--pv-surface-bright);
+  z-index: 15;
+  box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+  max-height: 60vh;          /* cap height so it doesn't swallow the screen */
+  overflow-y: auto;          /* scroll inside if content is tall */
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .pv-action-required-header {

@@ -551,8 +551,32 @@
     highlightField(elementId, fieldName, expectedValue) {
       const el = resolveElement(elementId);
       if (!el) return { success: false, reason: 'element_not_found' };
-      const inputType = el.getAttribute('type') || '';
-      showFieldGuide(el, fieldName, expectedValue, inputType, null);
+
+      const inputType = el.getAttribute('type') || el.tagName.toLowerCase();
+      const isFileInput = inputType === 'file';
+      const isRadio     = inputType === 'radio';
+      const isSelect    = el.tagName.toLowerCase() === 'select';
+      const isCheckbox  = inputType === 'checkbox';
+
+      // For file inputs: override description to guide user to click and select
+      let effectiveField    = fieldName;
+      let effectiveExpected = expectedValue;
+
+      if (isFileInput) {
+        effectiveField    = fieldName || 'Upload File';
+        effectiveExpected = expectedValue || 'Click this button to open the file picker and select the required file from your device.';
+      } else if (isRadio) {
+        effectiveField    = fieldName || 'Select an Option';
+        effectiveExpected = expectedValue || 'Click the correct radio button to select your choice.';
+      } else if (isSelect) {
+        effectiveField    = fieldName || 'Select from Dropdown';
+        effectiveExpected = expectedValue || 'Click the dropdown and choose the appropriate option from the list.';
+      } else if (isCheckbox) {
+        effectiveField    = fieldName || 'Check / Uncheck';
+        effectiveExpected = expectedValue || 'Click the checkbox to enable or disable this option.';
+      }
+
+      showFieldGuide(el, effectiveField, effectiveExpected, inputType, null);
       return { success: true };
     },
 

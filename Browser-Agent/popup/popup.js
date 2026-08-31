@@ -407,6 +407,8 @@ function describeAction(decision, elements) {
       return `Clicking "${findElementLabel(elements, decision.elementId)}"…`;
     case 'type':
       return `Typing into "${findElementLabel(elements, decision.elementId)}"…`;
+    case 'select':
+      return `Selecting option "${decision.value || ''}" in dropdown "${findElementLabel(elements, decision.elementId)}"…`;
     case 'scroll':
       return `Scrolling ${decision.value || 'down'}…`;
     case 'wait':
@@ -421,6 +423,8 @@ function buildActionArgs(decision) {
     case 'click':
       return [decision.elementId];
     case 'type':
+      return [decision.elementId, decision.value || ''];
+    case 'select':
       return [decision.elementId, decision.value || ''];
     case 'scroll':
       return [decision.value === 'up' ? 'up' : 'down'];
@@ -613,15 +617,16 @@ async function runAgentLoop(task) {
         await sendMessage({ type: 'AGENT_ACTION', action: 'clearHighlight', args: [] });
       } catch (_) {}
 
-      // ── CRITICAL: push a history entry for EVERY requested field so
-      // the backend sees that this step was completed by the user and
-      // does NOT re-issue the same ask_user action on the next iteration.
+      // ── CRITICAL: record each user-filled field using the same action
+      // name the backend model uses ('fill') so it recognises the step
+      // as done and moves on instead of re-issuing the same ask_user.
       for (const field of decision.fields) {
         actionHistory.push({
-          action: 'user_filled',
+          action: 'fill',
           elementId: field.elementId ?? targetElId,
           targetSelector: field.targetSelector || field.key,
           fieldName: field.fieldName || field.label,
+          value: '[ENTERED_BY_USER]',   // never the real value
           result: { success: true, filledByUser: true }
         });
       }

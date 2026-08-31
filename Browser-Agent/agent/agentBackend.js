@@ -104,7 +104,7 @@
         const tagFromType = (el.type || '').split(':')[0];
         const isFilled = el.hasValue === true || (el.value != null && el.value !== '');
 
-        return {
+        const record = {
           id:         toStringId(el.id),
           tag:        tagFromType || 'unknown',
           type:       el.type  || undefined,
@@ -119,6 +119,15 @@
           redactionTag: el.redactionTag || undefined,
           hasValue:     isFilled,
         };
+
+        // Enrich special element types so the backend model can make
+        // informed decisions without ever seeing raw PII.
+        if (el.options)    record.options    = el.options;    // <select> choices
+        if (el.radioGroup) record.radioGroup = el.radioGroup; // radio siblings
+        if (el.accept)     record.accept     = el.accept;     // file accept mime
+        if (el.multiple)   record.multiple   = el.multiple;   // multi-file upload
+
+        return record;
       }),
     };
   }
@@ -167,54 +176,105 @@
 
         const isFilled = el && (el.hasValue === true || (el.value != null && el.value !== ''));
 
-        // If the field is ALREADY filled on the webpage, do not ask the user to fill it again!
+        // If the field is ALREADY filled on the webpage by the user, skip it entirely.
         if (isFilled) {
-          console.log(`[AgentBackend] Field ${targetSelector} is already filled on the page. Skipping.`);
+          console.log(`[AgentBackend] Field ${targetSelector} already has a value. Skipping.`);
           return { action: 'wait', elementId: null, value: null };
         }
 
-        const isPasswordField = (el?.type === 'password') || 
+        // ── GUIDE-ONLY POLICY ────────────────────────────────────────────────
+        // The agent NEVER types into any field automatically — not even
+        // non-sensitive ones. It always uses ask_user to show the animated
+        // visual guide so the user fills in the value themselves.
+        // This covers: null values, dummy values, sensitive fields, everything.
+        // ─────────────────────────────────────────────────────────────────────
+        const isPasswordField = (el?.type === 'password') ||
                                 (el?.type && String(el.type).includes('password')) ||
                                 (targetSelector && targetSelector.toLowerCase().includes('password')) ||
-                                (el?.text && el.text.toLowerCase().includes('password')) ||
                                 (el?.placeholder && el.placeholder.toLowerCase().includes('password')) ||
                                 (el?.ariaLabel && el.ariaLabel.toLowerCase().includes('password'));
 
-        const isSensitive = el?.sensitive || isPasswordField;
+        const fieldLabel = el
+          ? (el.placeholder || el.ariaLabel || el.text || targetSelector || 'Required Field')
+          : (targetSelector || 'Required Field');
+        const cleanKey = targetSelector || `field_${elementId || 0}`;
+        const help = getExpectedInputHelp(fieldLabel, targetSelector || '', el?.type || '');
 
-        // Password & Sensitive fields MUST NEVER be auto-filled by backend dummy values!
-        // Always require explicit user input via ask_user.
-        if (value === null || value === undefined || value === 'null' || isSensitive) {
-          const fieldLabel = el ? (el.text || el.placeholder || el.ariaLabel || targetSelector || 'Required Field') : (targetSelector || 'Required Field');
-          const cleanKey = targetSelector || `field_${elementId || 0}`;
-          const help = getExpectedInputHelp(fieldLabel, targetSelector || '', el?.type || '');
-
-          return {
-            action: 'ask_user',
-            elementId: elementId,
-            targetSelector: targetSelector,
-            fields: [
-              {
-                key: cleanKey,
-                elementId: elementId,
-                targetSelector: targetSelector,
-                label: help.fieldName,
-                fieldName: help.fieldName,
-                expectedValue: help.expectedValue,
-                selectorText: targetSelector || (elementId != null ? `#element-${elementId}` : ''),
-                type: isPasswordField ? 'password' : 'text'
-              }
-            ]
-          };
-        }
-
+        return {
+          action: 'ask_user',
+          elementId: elementId,
+          targetSelector: targetSelector,
+          fields: [
+            {
+              key: cleanKey,
+              elementId: elementId,
+              targetSelector: targetSelector,
+              label: help.fieldName,
+              fieldName: help.fieldName,
+              expectedValue: help.expectedValue,
+              selectorText: targetSelector || (elementId != null ? `#element-${elementId}` : ''),
+              type: isPasswordField ? 'password' : 'text'
+            }
+          ]
+        };
+      }
+      // ── SELECT / DROPDOWN ─────────────────────────────────────────────────
+      // Backend can send 'select' with targetSelector + value (the option value
+      // to choose). The agent selects it automatically since dropdown choices
+      // are not sensitive — they're visible on screen.
+      case 'select': {
+        const elementId = resolveElementId(targetSelector, elements);
         if (elementId == null) {
-          console.warn('[AgentBackend] Target element selector not found for fill:', targetSelector);
+          console.warn('[AgentBackend] select target not found:', targetSelector);
           return { action: 'wait', elementId: null, value: null };
         }
-
-        return { action: 'type', elementId, value: value || '' };
+        const el = Array.isArray(elements) ? elements.find((e) => e.selector === targetSelector || e.id === elementId) : null;
+        const isAlreadySelected = el && el.value === value;
+        if (isAlreadySelected) return { action: 'wait', elementId: null, value: null };
+        return { action: 'select', elementId, value: value || '' };
       }
+
+      // ── RADIO BUTTON ──────────────────────────────────────────────────────
+      // Backend sends 'click' for radio buttons (they're just clickable).
+      // Handled via the normal click case below. But if backend explicitly
+      // sends 'radio', route it to click.
+      case 'radio': {
+        const elementId = resolveElementId(targetSelector, elements);
+        if (elementId == null) {
+          console.warn('[AgentBackend] radio target not found:', targetSelector);
+          return { action: 'wait', elementId: null, value: null };
+        }
+        return { action: 'click', elementId, value: null };
+      }
+
+      // ── FILE UPLOAD ───────────────────────────────────────────────────────
+      // The browser blocks programmatic file selection for security. Instead,
+      // show the visual guide pointing to the upload button so the user
+      // clicks it and selects the file themselves.
+      case 'upload':
+      case 'file': {
+        const elementId = resolveElementId(targetSelector, elements);
+        const el = Array.isArray(elements) ? elements.find((e) => e.selector === targetSelector || e.id === elementId) : null;
+        const acceptHint = el?.accept ? ` Accepted formats: ${el.accept}.` : '';
+        const multiHint  = el?.multiple ? ' Multiple files can be selected.' : '';
+        return {
+          action: 'ask_user',
+          elementId,
+          targetSelector,
+          isUpload: true,
+          fields: [{
+            key:           targetSelector || `upload_${elementId}`,
+            elementId,
+            targetSelector,
+            label:         'Upload File',
+            fieldName:     'Upload File',
+            expectedValue: `Click the highlighted upload button and select the required file from your device.${acceptHint}${multiHint}`,
+            selectorText:  targetSelector || '',
+            type:          'file'
+          }]
+        };
+      }
+
       case 'scroll':
         return { action: 'scroll', elementId: null, value: value || 'down' };
       case 'wait':

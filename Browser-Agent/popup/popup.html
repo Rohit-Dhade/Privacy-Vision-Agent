@@ -75,19 +75,6 @@
       <!-- Interactive Feed / Chat Log -->
       <section id="chatLog" class="pv-chat-log" aria-live="polite"></section>
 
-      <!-- Inline Action Required / User Input Form Section -->
-      <section id="userInputSection" class="pv-card pv-action-required-card" hidden>
-        <div class="pv-action-required-header">
-          <div class="pv-action-title-row">
-            <span class="material-symbols-outlined pv-lock-icon">lock</span>
-            <div>
-              <h2 class="pv-card-title">ACTION REQUIRED</h2>
-              <p class="pv-action-subtitle">Secure input needed to proceed.</p>
-            </div>
-          </div>
-        </div>
-        <div id="userInputContainer" class="pv-user-input-container"></div>
-      </section>
 
       <!-- Page Analysis & Redaction Summary (Collapsible Panel) -->
       <details id="detailsPanel" class="pv-card pv-details-card" hidden>
@@ -150,6 +137,20 @@
         </div>
       </details>
     </main>
+
+    <!-- Action Required Panel — pinned above footer, never scrolls away -->
+    <section id="userInputSection" class="pv-action-required-card" hidden>
+      <div class="pv-action-required-header">
+        <div class="pv-action-title-row">
+          <span class="material-symbols-outlined pv-lock-icon">lock</span>
+          <div>
+            <h2 class="pv-card-title">ACTION REQUIRED</h2>
+            <p class="pv-action-subtitle">Secure input needed to proceed.</p>
+          </div>
+        </div>
+      </div>
+      <div id="userInputContainer" class="pv-user-input-container"></div>
+    </section>
 
     <!-- Footer Component -->
     <footer class="pv-footer">

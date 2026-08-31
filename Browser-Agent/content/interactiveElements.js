@@ -61,22 +61,44 @@
     if (tag === 'input') {
       const type = (el.getAttribute('type') || 'text').toLowerCase();
       if (SENSITIVE_VALUE_INPUT_TYPES.has(type)) return null;
-      if (type === 'checkbox' || type === 'radio') return el.checked ? 'checked' : 'unchecked';
-      // Text-like inputs: value is included, but it will still be run
-      // through the PII detector before anything is ever rendered/sent.
+      if (type === 'checkbox') return el.checked ? 'checked' : 'unchecked';
+      if (type === 'radio') return el.checked ? 'checked' : 'unchecked';
+      if (type === 'file') return el.files && el.files.length > 0 ? `${el.files.length} file(s) selected` : null;
       return el.value || null;
     }
     if (tag === 'select') {
-      // Use the selected option's visible label, not the underlying
-      // `value` attribute — pages often set value="opt1" while the
-      // text actually rendered on screen (and therefore in the
-      // screenshot) is something like "John Doe — Visa ••1234".
-      // That rendered text is what needs to be PII-scanned.
       const opt = el.options && el.options[el.selectedIndex];
       return opt ? (opt.text || opt.value || null) : (el.value || null);
     }
     if (tag === 'textarea') return el.value || null;
     return null;
+  }
+
+  /** Extract all <option> labels from a <select> (safe, no PII risk). */
+  function selectOptions(el) {
+    if (el.tagName.toLowerCase() !== 'select') return null;
+    const opts = [];
+    for (const opt of el.options) {
+      if (opt.value === '' || opt.disabled) continue; // skip placeholder options
+      opts.push({ value: opt.value, label: opt.text.trim() });
+    }
+    return opts.length > 0 ? opts : null;
+  }
+
+  /** For radio groups, capture the name & all sibling values. */
+  function radioGroup(el) {
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    if (tag !== 'input' || type !== 'radio') return null;
+    const name = el.getAttribute('name');
+    if (!name) return null;
+    const siblings = Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`));
+    return siblings.map((r) => ({
+      value: r.value,
+      label: r.getAttribute('aria-label') ||
+             (r.id ? (document.querySelector(`label[for="${CSS.escape(r.id)}"]`)?.textContent?.trim() || r.value) : r.value),
+      checked: r.checked
+    }));
   }
 
   function shortText(el) {
@@ -90,15 +112,10 @@
   /**
    * Collects visible interactive elements from the current document.
    * Returns { elements: [...], registry: Map<id, HTMLElement> }
-   * The registry is kept in-memory only (not serialized) so actions
-   * like click()/type() can resolve back to the live element quickly;
-   * it is rebuilt on every extraction pass.
    */
   function extractInteractiveElements(viewportWidth, viewportHeight) {
     const candidates = new Set(document.querySelectorAll(INTERACTIVE_SELECTOR));
 
-    // Heuristic pass: elements with pointer cursor + a click-ish role
-    // that weren't already matched (e.g. clickable <div> cards).
     document.querySelectorAll('div,span,li,section,article').forEach((el) => {
       if (candidates.has(el)) return;
       if (hasPointerCursor(el) && el.getAttribute('tabindex') !== '-1') {
@@ -118,6 +135,8 @@
       const rect = el.getBoundingClientRect();
       const id = nextId++;
       const selector = root.__BA_Selectors.getStableSelector(el);
+      const tag = el.tagName.toLowerCase();
+      const inputType = (el.getAttribute('type') || '').toLowerCase();
 
       elements.push({
         id,
@@ -126,7 +145,12 @@
         ariaLabel: el.getAttribute('aria-label') || null,
         placeholder: el.getAttribute('placeholder') || null,
         value: safeValue(el),
-        href: el.tagName.toLowerCase() === 'a' ? el.getAttribute('href') : null,
+        href: tag === 'a' ? el.getAttribute('href') : null,
+        // Extra metadata for special element types
+        options: selectOptions(el),          // <select> choices
+        radioGroup: radioGroup(el),          // radio group siblings
+        accept: (tag === 'input' && inputType === 'file') ? (el.getAttribute('accept') || null) : null,
+        multiple: (tag === 'input' && inputType === 'file') ? el.multiple : false,
         bbox: {
           x: Math.round(rect.left),
           y: Math.round(rect.top),
