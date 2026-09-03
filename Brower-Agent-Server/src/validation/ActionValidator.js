@@ -62,34 +62,60 @@ function sanitizeRawJson(text) {
   return result;
 }
 
-function violatesSensitiveFieldRule(action, domSkeleton) {
-  if (action.action != "fill" || action.value === null) return false;
+const TARGETED_ACTIONS = new Set([
+  'click', 'fill', 'type', 'clear', 'select', 'check', 'uncheck', 'radio', 'hover', 'focus', 'fill_from_local', 'upload'
+]);
 
-  const targetElement = domSkeleton.elements.find(
+function violatesSensitiveFieldRule(action, domSkeleton) {
+  if ((action.action !== "fill" && action.action !== "type") || action.value === null) return false;
+
+  const targetElement = domSkeleton?.elements?.find(
     (el) => el.selector === action.targetSelector
   );
 
-  if (!targetElement) return true;
+  if (!targetElement) return false;
 
-  return targetElement.sensitive === true || targetElement.sensitive === "unknown"
+  return targetElement.sensitive === true || targetElement.sensitive === "unknown";
 }
 
 function targetSelectorIsInvalid(action, domSkeleton) {
-  if (action.targetSelector === null) return false;
-  const exists = domSkeleton.elements.some((el) => el.selector === action.targetSelector);
-  return !exists;
+  const isTargeted = TARGETED_ACTIONS.has(action.action);
+  
+  // If targeted action has no selector, it's invalid
+  if (isTargeted && (!action.targetSelector || typeof action.targetSelector !== 'string')) {
+    return true;
+  }
+
+  // If selector is provided, verify existence in DOM skeleton
+  if (action.targetSelector && typeof action.targetSelector === 'string') {
+    const exists = domSkeleton?.elements?.some((el) => el.selector === action.targetSelector);
+    return !exists;
+  }
+
+  return false;
+}
+
+const INJECTION_COMPLIANCE_PATTERNS = [
+  /\bignor(?:e[ds]?|ing)\s+(?:all\s+)?(?:previous|prior|above)\s+instructions\b/i,
+  /\bunrestricted\s+agent\b/i,
+  /\b(?:reveal|revealing|send|sending|share|sharing|leak|leaking)\s+(?:the\s+)?(?:user'?s?\s+)?(?:private|credentials|password)\b/i,
+  /\bper\s+system\s+message\s+on\s+page\b/i,
+  /\bwebpage\s+instructed\s+me\b/i
+];
+
+function violatesPromptInjectionDefense(action) {
+  const textToCheck = `${action.reasoning || ''} ${action.value || ''}`;
+  for (const pat of INJECTION_COMPLIANCE_PATTERNS) {
+    if (pat.test(textToCheck)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function validateAction(rawText, domSkeleton) {
   const extracted = extractJson(rawText);
   const sanitized = sanitizeRawJson(extracted);
-
-  console.log("--- RAW rawText ---");
-  console.log(JSON.stringify(rawText));
-  console.log("--- extracted ---");
-  console.log(JSON.stringify(extracted));
-  console.log("--- sanitized ---");
-  console.log(JSON.stringify(sanitized));
 
   let parsed;
   try {
@@ -101,6 +127,10 @@ function validateAction(rawText, domSkeleton) {
   const result = actionSchema.safeParse(parsed);
   if (!result.success) {
     return { ok: false, reason: "Reason did not match action Schema", errors: result.error.issues };
+  }
+
+  if (violatesPromptInjectionDefense(result.data)) {
+    return { ok: false, reason: "Hostile prompt injection compliance detected in reasoning or value — rejected." };
   }
 
   if (violatesSensitiveFieldRule(result.data, domSkeleton)) {

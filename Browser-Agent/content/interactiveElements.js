@@ -68,7 +68,8 @@
     }
     if (tag === 'select') {
       const opt = el.options && el.options[el.selectedIndex];
-      return opt ? (opt.text || opt.value || null) : (el.value || null);
+      if (!opt || opt.value === '' || opt.disabled) return null;
+      return opt.value || opt.text || null;
     }
     if (tag === 'textarea') return el.value || null;
     return null;
@@ -109,6 +110,47 @@
     return label ? label.slice(0, 200) : '';
   }
 
+  function isStickyElement(el) {
+    let curr = el;
+    while (curr && curr !== document.body && curr !== document.documentElement) {
+      try {
+        const pos = window.getComputedStyle(curr).position;
+        if (pos === 'fixed' || pos === 'sticky') return true;
+      } catch (_) {}
+      curr = curr.parentElement;
+    }
+    return false;
+  }
+
+  function isSearchInput(el, inputType) {
+    if (inputType === 'search') return true;
+    if (el.getAttribute('role') === 'searchbox') return true;
+    const name = (el.getAttribute('name') || '').toLowerCase();
+    const placeholder = (el.getAttribute('placeholder') || '').toLowerCase();
+    const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+    const id = (el.id || '').toLowerCase();
+    return name.includes('search') || placeholder.includes('search') || ariaLabel.includes('search') || id.includes('search');
+  }
+
+  function isPaginationControl(el, text) {
+    const parentNav = el.closest('nav, [role="navigation"]');
+    const isPagingNav = parentNav && /pagination|paging/i.test(parentNav.getAttribute('aria-label') || parentNav.className || '');
+    if (isPagingNav) return true;
+    const cleanText = text.trim().toLowerCase();
+    if (/^(next|prev|previous|first|last|\d+)$/i.test(cleanText)) return true;
+    const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+    if (ariaLabel.includes('page') || ariaLabel.includes('pagination') || ariaLabel.includes('next page') || ariaLabel.includes('previous page')) return true;
+    return false;
+  }
+
+  function getModalAncestor(el) {
+    return el.closest('dialog[open], [role="dialog"], [role="alertdialog"], [aria-modal="true"]');
+  }
+
+  function getNavAncestor(el) {
+    return el.closest('nav, [role="navigation"], header');
+  }
+
   /**
    * Collects visible interactive elements from the current document.
    * Returns { elements: [...], registry: Map<id, HTMLElement> }
@@ -137,11 +179,12 @@
       const selector = root.__BA_Selectors.getStableSelector(el);
       const tag = el.tagName.toLowerCase();
       const inputType = (el.getAttribute('type') || '').toLowerCase();
+      const text = shortText(el);
 
       elements.push({
         id,
         type: classifyType(el),
-        text: shortText(el),
+        text,
         ariaLabel: el.getAttribute('aria-label') || null,
         placeholder: el.getAttribute('placeholder') || null,
         value: safeValue(el),
@@ -159,7 +202,14 @@
         },
         selector,
         visible: true,
-        enabled: !isDisabled(el)
+        enabled: !isDisabled(el),
+        // Semantic categorization
+        isSearch: isSearchInput(el, inputType),
+        isPagination: isPaginationControl(el, text),
+        inModal: Boolean(getModalAncestor(el)),
+        inNav: Boolean(getNavAncestor(el)),
+        isSticky: isStickyElement(el),
+        formId: el.form ? (el.form.id || el.form.name || el.form.getAttribute('action') || 'form') : (el.closest('form') ? (el.closest('form').id || 'form') : null)
       });
 
       registry.set(id, el);

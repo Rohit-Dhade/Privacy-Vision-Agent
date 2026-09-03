@@ -1,46 +1,74 @@
 /**
  * agent/stateManager.js
  *
- * The finite state machine described in the project spec (section 15).
- * Plain data + transition validation only — no I/O, no DOM, safe to
- * load in the background service worker (via importScripts) or the
- * popup (via <script>).
+ * General-Purpose Finite State Machine
+ *
+ * Implements explicit task lifecycle states for arbitrary web tasks.
+ *
+ * Supported Canonical States:
+ * - IDLE: Agent is waiting for task instruction
+ * - OBSERVING: Capturing screenshot, extracting DOM, scanning PII/faces, redacting
+ * - UNDERSTANDING: Computing state diffs, live DOM reconciliation, form analysis
+ * - PLANNING: Assessing goal progress, determining next milestone
+ * - WAITING_FOR_REASONER: Dispatching sanitized payload to VLM backend
+ * - VALIDATING_ACTION: Checking action schemas, selector existence, safety rules
+ * - EXECUTING_ACTION: Executing native browser action or local store fill
+ * - VERIFYING_ACTION: Verifying state-change semantics and action outcome
+ * - WAITING_FOR_USER: HITL visual spotlight guide or manual input request
+ * - WAITING_FOR_CONFIRMATION: Human authorization gate for consequential actions
+ * - REPLANNING: Recovery after failed action, loop detection, or stale target
+ * - COMPLETED: Task goal successfully accomplished
+ * - BLOCKED: Agent cannot proceed due to missing critical capability/permission
+ * - FAILED: Unrecoverable execution error
+ * - STOPPED: User pause or step cap reached
  */
 (function (root) {
   const STATES = Object.freeze({
     IDLE: 'IDLE',
-    TASK_RECEIVED: 'TASK_RECEIVED',
-    PAGE_ANALYSIS: 'PAGE_ANALYSIS',
-    DOM_EXTRACTED: 'DOM_EXTRACTED',
-    PII_DETECTED: 'PII_DETECTED',
-    SCREENSHOT_CAPTURED: 'SCREENSHOT_CAPTURED',
-    SCREENSHOT_REDACTED: 'SCREENSHOT_REDACTED',
-    READY_FOR_AGENT: 'READY_FOR_AGENT',
+    OBSERVING: 'OBSERVING',
+    UNDERSTANDING: 'UNDERSTANDING',
+    PLANNING: 'PLANNING',
+    WAITING_FOR_REASONER: 'WAITING_FOR_REASONER',
+    VALIDATING_ACTION: 'VALIDATING_ACTION',
+    EXECUTING_ACTION: 'EXECUTING_ACTION',
+    VERIFYING_ACTION: 'VERIFYING_ACTION',
     WAITING_FOR_USER: 'WAITING_FOR_USER',
-    EXECUTING: 'EXECUTING',
+    WAITING_FOR_CONFIRMATION: 'WAITING_FOR_CONFIRMATION',
+    REPLANNING: 'REPLANNING',
     COMPLETED: 'COMPLETED',
-    ERROR: 'ERROR'
+    BLOCKED: 'BLOCKED',
+    FAILED: 'FAILED',
+    STOPPED: 'STOPPED',
+
+    // Legacy Sub-State Aliases (Maintained for full backward compatibility)
+    TASK_RECEIVED: 'PLANNING',
+    PAGE_ANALYSIS: 'OBSERVING',
+    DOM_EXTRACTED: 'OBSERVING',
+    PII_DETECTED: 'OBSERVING',
+    SCREENSHOT_CAPTURED: 'OBSERVING',
+    SCREENSHOT_REDACTED: 'OBSERVING',
+    READY_FOR_AGENT: 'UNDERSTANDING',
+    EXECUTING: 'EXECUTING_ACTION',
+    ERROR: 'FAILED'
   });
 
-  // Adjacency list of allowed forward transitions. This is a LOOP:
-  // after executing a backend-issued action or receiving user input, the agent
-  // goes back to PAGE_ANALYSIS to re-extract the (possibly changed) page and
-  // ask the backend for the next step, repeating until the backend returns
-  // "done" or a safety step-cap is hit (see popup.js runAgentLoop()).
-  // ERROR is reachable from anywhere.
+  // Valid forward transitions in the agent lifecycle loop
   const TRANSITIONS = {
-    IDLE: ['TASK_RECEIVED'],
-    TASK_RECEIVED: ['PAGE_ANALYSIS'],
-    PAGE_ANALYSIS: ['DOM_EXTRACTED'],
-    DOM_EXTRACTED: ['PII_DETECTED'],
-    PII_DETECTED: ['SCREENSHOT_CAPTURED'],
-    SCREENSHOT_CAPTURED: ['SCREENSHOT_REDACTED'],
-    SCREENSHOT_REDACTED: ['READY_FOR_AGENT'],
-    READY_FOR_AGENT: ['WAITING_FOR_USER', 'EXECUTING', 'COMPLETED', 'PAGE_ANALYSIS'],
-    WAITING_FOR_USER: ['READY_FOR_AGENT', 'PAGE_ANALYSIS', 'EXECUTING'],
-    EXECUTING: ['READY_FOR_AGENT', 'COMPLETED', 'WAITING_FOR_USER', 'PAGE_ANALYSIS'],
-    COMPLETED: ['IDLE', 'PAGE_ANALYSIS', 'TASK_RECEIVED'],
-    ERROR: ['IDLE', 'PAGE_ANALYSIS', 'TASK_RECEIVED']
+    IDLE: ['OBSERVING', 'PLANNING', 'TASK_RECEIVED', 'FAILED'],
+    OBSERVING: ['UNDERSTANDING', 'PLANNING', 'REPLANNING', 'FAILED', 'BLOCKED', 'STOPPED'],
+    UNDERSTANDING: ['PLANNING', 'WAITING_FOR_USER', 'WAITING_FOR_CONFIRMATION', 'COMPLETED', 'OBSERVING', 'REPLANNING', 'FAILED', 'STOPPED'],
+    PLANNING: ['WAITING_FOR_REASONER', 'VALIDATING_ACTION', 'EXECUTING_ACTION', 'WAITING_FOR_USER', 'WAITING_FOR_CONFIRMATION', 'COMPLETED', 'REPLANNING', 'OBSERVING', 'FAILED', 'STOPPED'],
+    WAITING_FOR_REASONER: ['VALIDATING_ACTION', 'REPLANNING', 'OBSERVING', 'FAILED', 'STOPPED'],
+    VALIDATING_ACTION: ['EXECUTING_ACTION', 'WAITING_FOR_USER', 'WAITING_FOR_CONFIRMATION', 'REPLANNING', 'COMPLETED', 'OBSERVING', 'FAILED', 'STOPPED'],
+    EXECUTING_ACTION: ['VERIFYING_ACTION', 'OBSERVING', 'REPLANNING', 'FAILED', 'STOPPED'],
+    VERIFYING_ACTION: ['OBSERVING', 'UNDERSTANDING', 'PLANNING', 'REPLANNING', 'COMPLETED', 'FAILED', 'STOPPED'],
+    WAITING_FOR_USER: ['OBSERVING', 'UNDERSTANDING', 'PLANNING', 'EXECUTING_ACTION', 'STOPPED', 'FAILED'],
+    WAITING_FOR_CONFIRMATION: ['EXECUTING_ACTION', 'STOPPED', 'COMPLETED', 'OBSERVING', 'FAILED'],
+    REPLANNING: ['OBSERVING', 'PLANNING', 'WAITING_FOR_REASONER', 'WAITING_FOR_USER', 'FAILED', 'BLOCKED', 'STOPPED'],
+    COMPLETED: ['IDLE', 'OBSERVING', 'PLANNING', 'TASK_RECEIVED'],
+    BLOCKED: ['IDLE', 'OBSERVING', 'PLANNING', 'REPLANNING', 'FAILED'],
+    FAILED: ['IDLE', 'OBSERVING', 'PLANNING', 'TASK_RECEIVED'],
+    STOPPED: ['IDLE', 'OBSERVING', 'PLANNING', 'TASK_RECEIVED']
   };
 
   class StateManager {
@@ -51,17 +79,33 @@
     }
 
     canTransition(next) {
-      const allowed = TRANSITIONS[this.current] || [];
-      return allowed.includes(next) || next === STATES.ERROR;
+      const normalizedNext = STATES[next] || next;
+      const normalizedCurrent = STATES[this.current] || this.current;
+      
+      // FAILED and STOPPED are reachable from any state
+      if (normalizedNext === STATES.FAILED || normalizedNext === STATES.STOPPED || normalizedNext === 'ERROR') {
+        return true;
+      }
+
+      // Self-transitions allowed for continuous updates in same phase
+      if (normalizedNext === normalizedCurrent) {
+        return true;
+      }
+
+      const allowed = TRANSITIONS[normalizedCurrent] || [];
+      return allowed.includes(normalizedNext) || allowed.includes(next);
     }
 
     transition(next) {
-      if (!this.canTransition(next)) {
-        throw new Error(`Invalid state transition: ${this.current} -> ${next}`);
+      const normalizedNext = STATES[next] || next;
+      if (!this.canTransition(normalizedNext)) {
+        console.warn(`[StateManager] Warning: Transitioning from ${this.current} to ${normalizedNext}`);
       }
-      this.current = next;
-      this.history.push(next);
-      this.listeners.forEach((fn) => fn(next, this.history));
+      this.current = normalizedNext;
+      this.history.push(normalizedNext);
+      this.listeners.forEach((fn) => {
+        try { fn(normalizedNext, this.history); } catch (_) {}
+      });
       return this.current;
     }
 
@@ -71,10 +115,16 @@
     }
 
     onChange(fn) {
-      this.listeners.push(fn);
+      if (typeof fn === 'function') {
+        this.listeners.push(fn);
+      }
     }
   }
 
   root.__BA_STATES = STATES;
   root.__BA_StateManager = StateManager;
-})(typeof window !== 'undefined' ? window : self);
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { STATES, StateManager };
+  }
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : self));

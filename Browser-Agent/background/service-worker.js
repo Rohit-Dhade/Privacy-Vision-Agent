@@ -44,6 +44,7 @@ const CONTENT_SCRIPT_FILES = [
   'content/piiDetector.js',
   'content/coordinateMapper.js',
   'content/domExtractor.js',
+  'content/semanticDomBuilder.js',
   'content/content.js'
 ];
 
@@ -52,9 +53,6 @@ const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html';
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.id) throw new Error('No active tab found.');
-  if (!/^https?:/.test(tab.url || '')) {
-    throw new Error('This page cannot be analyzed (unsupported URL scheme).');
-  }
   return tab;
 }
 
@@ -82,6 +80,17 @@ async function captureScreenshot(tab) {
 
 async function performAnalysis() {
   const tab = await getActiveTab();
+  const isSupported = /^https?:/.test(tab.url || '');
+
+  // If current page is an unsupported/internal page (e.g. chrome://newtab, about:blank),
+  // return clean metadata indicating unsupported scheme so the agent can evaluate navigation.
+  if (!isSupported) {
+    return {
+      isUnsupportedScheme: true,
+      url: tab.url || 'about:blank',
+      tabId: tab.id
+    };
+  }
 
   /*
    * Inject the content scripts.
@@ -130,6 +139,7 @@ async function performAnalysis() {
    * Return EVERYTHING to popup.
    */
   return {
+    isUnsupportedScheme: false,
     extraction,
     screenshotDataUrl,
     faces,
@@ -139,6 +149,19 @@ async function performAnalysis() {
 
 async function performAction(action, args) {
   const tab = await getActiveTab();
+
+  // If action is navigation, execute via chrome.tabs.update directly
+  // (works on all tabs including internal browser pages like chrome://newtab).
+  if (action === 'navigate' && args && args[0]) {
+    await chrome.tabs.update(tab.id, { url: args[0] });
+    return { success: true, navigatingTo: args[0] };
+  }
+
+  const isSupported = /^https?:/.test(tab.url || '');
+  if (!isSupported) {
+    throw new Error('Cannot execute DOM actions on an unsupported internal browser page.');
+  }
+
   await ensureContentScriptInjected(tab.id);
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },

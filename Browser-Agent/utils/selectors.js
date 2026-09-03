@@ -68,6 +68,25 @@
       }
     }
 
+    const tag = el.tagName.toLowerCase();
+    const name = el.getAttribute('name');
+    if (name) {
+      const sel = `${tag}[name="${cssEscape(name)}"]`;
+      if (document.querySelectorAll(sel).length === 1) return sel;
+    }
+
+    const ariaLabel = el.getAttribute('aria-label');
+    if (ariaLabel && ariaLabel.trim().length > 0 && ariaLabel.trim().length < 60) {
+      const sel = `${tag}[aria-label="${cssEscape(ariaLabel.trim())}"]`;
+      if (document.querySelectorAll(sel).length === 1) return sel;
+    }
+
+    const placeholder = el.getAttribute('placeholder');
+    if (placeholder && placeholder.trim().length > 0 && placeholder.trim().length < 60) {
+      const sel = `${tag}[placeholder="${cssEscape(placeholder.trim())}"]`;
+      if (document.querySelectorAll(sel).length === 1) return sel;
+    }
+
     // Try a path that stops early at the nearest ancestor with an id.
     const shortPath = buildPath(el, true);
     if (shortPath && document.querySelectorAll(shortPath).length === 1) {

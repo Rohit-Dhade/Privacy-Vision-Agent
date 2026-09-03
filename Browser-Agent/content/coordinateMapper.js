@@ -25,12 +25,33 @@
    */
   function mapDomBoxToScreenshot(domBbox, viewport, imageWidth, imageHeight, padding = 4) {
     const scaled = root.__BA_Geometry.scaleRectToImage(domBbox, viewport, imageWidth, imageHeight);
-    // Padding is applied in image-pixel space, scaled proportionally so
-    // it looks consistent regardless of DPR.
     const scaleAvg = (imageWidth / viewport.width + imageHeight / viewport.height) / 2;
     const padded = root.__BA_Geometry.padRect(scaled, padding * scaleAvg);
     return root.__BA_Geometry.clampRect(padded, imageWidth, imageHeight);
   }
+  /**
+   * Converts a screenshot pixel point back into viewport CSS coordinates.
+   * Self-corrects for devicePixelRatio, OS scaling, and zoom.
+   *
+   * @param {{x:number,y:number}} point - point in screenshot pixel space
+   * @param {{width:number,height:number}} viewport - viewport CSS size
+   * @param {number} imageWidth - screenshot image width
+   * @param {number} imageHeight - screenshot image height
+   * @returns {{x:number,y:number}|null}
+   */
+  function mapScreenshotPointToViewport(point, viewport, imageWidth, imageHeight) {
+    if (!point || typeof point.x !== 'number' || typeof point.y !== 'number') return null;
+    if (!viewport || !viewport.width || !viewport.height || !imageWidth || !imageHeight) return null;
+    const scaleX = viewport.width / imageWidth;
+    const scaleY = viewport.height / imageHeight;
+    return {
+      x: point.x * scaleX,
+      y: point.y * scaleY
+    };
+  }
 
-  root.__BA_CoordinateMapper = { mapDomBoxToScreenshot };
+  root.__BA_CoordinateMapper = {
+    mapDomBoxToScreenshot,
+    mapScreenshotPointToViewport
+  };
 })(typeof window !== 'undefined' ? window : self);

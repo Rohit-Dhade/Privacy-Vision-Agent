@@ -10,15 +10,158 @@
     lastResult: null,
     observer: null,
     debounceTimer: null,
-    guideCleanup: null
+    guideCleanup: null,
+    userInteractions: []
   };
 
-  function resolveElement(id) {
-    const cached = window.__BA_state.registry.get(id);
-    if (cached && document.contains(cached)) return cached;
-    const meta = window.__BA_state.lastResult &&
-      window.__BA_state.lastResult.elements.find((e) => e.id === id);
-    if (meta && meta.selector) return window.__BA_Selectors.resolveSelector(meta.selector);
+  // ── Lightweight User Interaction Tracker (Metadata Only) ──────────────────
+  const MAX_INTERACTIONS = 20;
+
+  function findElementIdForDomNode(node) {
+    if (!node || !window.__BA_state.registry) return null;
+    for (const [id, el] of window.__BA_state.registry.entries()) {
+      if (el === node || (el && typeof el.contains === 'function' && el.contains(node))) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  function recordInteraction(record) {
+    if (!Array.isArray(window.__BA_state.userInteractions)) {
+      window.__BA_state.userInteractions = [];
+    }
+    window.__BA_state.userInteractions.push({
+      ...record,
+      timestamp: Date.now()
+    });
+    if (window.__BA_state.userInteractions.length > MAX_INTERACTIONS) {
+      window.__BA_state.userInteractions.shift();
+    }
+  }
+
+  // Click tracking (captures target metadata, never typed values)
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest && e.target.closest('#pv-guide-card')) return;
+    const target = e.target;
+    if (!target) return;
+    const elementId = findElementIdForDomNode(target);
+    const tag = (target.tagName || '').toLowerCase();
+    const label = (target.getAttribute('aria-label') || target.innerText || target.getAttribute('placeholder') || '').slice(0, 40).trim();
+
+    recordInteraction({
+      actor: 'user',
+      action: 'click',
+      elementId: elementId != null ? String(elementId) : null,
+      tag,
+      label: label || undefined
+    });
+  }, { passive: true, capture: true });
+
+  // Field change tracking (METADATA ONLY — NEVER STORES TYPED VALUE)
+  document.addEventListener('change', (e) => {
+    const target = e.target;
+    if (!target) return;
+    const tag = (target.tagName || '').toLowerCase();
+    if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') return;
+
+    const elementId = findElementIdForDomNode(target);
+    const label = (target.getAttribute('aria-label') || target.getAttribute('placeholder') || target.name || '').slice(0, 40).trim();
+
+    recordInteraction({
+      actor: 'user',
+      action: 'field_change',
+      elementId: elementId != null ? String(elementId) : null,
+      tag,
+      label: label || undefined
+    });
+  }, { passive: true, capture: true });
+
+  // Scroll tracking (throttled)
+  let lastScrollTime = 0;
+  let lastScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+  window.addEventListener('scroll', () => {
+    const now = Date.now();
+    if (now - lastScrollTime > 600) {
+      const currentY = window.scrollY;
+      const direction = currentY >= lastScrollY ? 'down' : 'up';
+      lastScrollY = currentY;
+      lastScrollTime = now;
+
+      recordInteraction({
+        actor: 'user',
+        action: 'scroll',
+        direction
+      });
+    }
+  }, { passive: true });
+
+  // Navigation tracking
+  window.addEventListener('popstate', () => {
+    recordInteraction({
+      actor: 'user',
+      action: 'navigation',
+      to: location.pathname
+    });
+  });
+
+  window.addEventListener('hashchange', () => {
+    recordInteraction({
+      actor: 'user',
+      action: 'navigation',
+      to: location.pathname + location.hash
+    });
+  });
+
+  function resolveElement(id, targetSelector) {
+    const target = id ?? targetSelector;
+    if (!target && target !== 0) return null;
+
+    // 1. Direct query via targetSelector if provided
+    if (typeof targetSelector === 'string' && targetSelector.trim()) {
+      try {
+        const direct = document.querySelector(targetSelector);
+        if (direct && document.contains(direct)) return direct;
+      } catch (_) {}
+    }
+
+    // 2. Direct DOM check if id is a selector string
+    if (typeof id === 'string') {
+      try {
+        const direct = document.querySelector(id);
+        if (direct && document.contains(direct)) return direct;
+      } catch (_) {}
+    }
+
+    // 3. Registry cache check
+    if (id != null && window.__BA_state?.registry) {
+      const cached = window.__BA_state.registry.get(id);
+      if (cached && document.contains(cached)) return cached;
+    }
+
+    // 4. Last extraction metadata lookup
+    const meta = window.__BA_state?.lastResult?.elements?.find((e) =>
+      e.id === id || e.selector === targetSelector || e.selector === id
+    );
+    if (meta && meta.selector && window.__BA_Selectors) {
+      const resolved = window.__BA_Selectors.resolveSelector(meta.selector);
+      if (resolved && document.contains(resolved)) return resolved;
+    }
+
+    // 5. Global selector resolver fallback
+    if (typeof targetSelector === 'string' && window.__BA_Selectors) {
+      try {
+        const resolved = window.__BA_Selectors.resolveSelector(targetSelector);
+        if (resolved && document.contains(resolved)) return resolved;
+      } catch (_) {}
+    }
+    if (typeof id === 'string' && window.__BA_Selectors) {
+      try {
+        const resolved = window.__BA_Selectors.resolveSelector(id);
+        if (resolved && document.contains(resolved)) return resolved;
+      } catch (_) {}
+    }
+
     return null;
   }
 
@@ -31,8 +174,12 @@
 
   function dispatchNativeInput(el, text) {
     const proto = el.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
-    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
-    setter.call(el, text);
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (setter) {
+      setter.call(el, text);
+    } else {
+      el.value = text;
+    }
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
@@ -509,43 +656,276 @@
 
   // ── Public BrowserAgent API ────────────────────────────────────────────────
   const BrowserAgent = {
-    runFullExtraction() { return window.__BA_DomExtractor.runExtraction(); },
-    getLastResult()     { return window.__BA_state.lastResult; },
+    runFullExtraction(taskInstruction = '') {
+      const result = window.__BA_DomExtractor.runExtraction();
+      result.userInteractions = BrowserAgent.getRecentUserInteractions();
 
-    click(elementId) {
-      const el = resolveElement(elementId);
+      // Shadow mode: build Smart Semantic DOM for local inspection only.
+      // Does NOT affect the production result or any outbound payload.
+      if (window.__BA_SemanticDom) {
+        try {
+          const t0 = performance.now();
+          const shadow = window.__BA_SemanticDom.buildSemanticView(
+            result.elements,
+            result.url,
+            result.pageContext,
+            result.visibleText,
+            taskInstruction || ''
+          );
+          shadow.buildTimeMs = Math.round(performance.now() - t0);
+          window.__BA_state.shadowSemanticDom = shadow;
+          console.debug('[SemanticDOM:Shadow]', shadow.stats, shadow.contextSummary);
+        } catch (e) {
+          console.debug('[SemanticDOM:Shadow] Error:', e.message);
+        }
+      }
+
+      return result;
+    },
+    getLastResult() { return window.__BA_state.lastResult; },
+
+    getRecentUserInteractions() {
+      const interactions = Array.isArray(window.__BA_state.userInteractions)
+        ? [...window.__BA_state.userInteractions]
+        : [];
+      window.__BA_state.userInteractions = [];
+      return interactions;
+    },
+
+    click(elementId, targetSelector) {
+      const el = resolveElement(elementId, targetSelector);
       if (!el) return { success: false, reason: 'element_not_found' };
       if (!window.__BA_Visibility.isElementVisible(el, window.innerWidth, window.innerHeight))
         return { success: false, reason: 'element_not_visible' };
+      
+      const preUrl = location.href;
+      const preChecked = el.checked;
+      const preExpanded = el.getAttribute('aria-expanded');
+
       el.scrollIntoView({ block: 'center', inline: 'center' });
       el.click();
-      return { success: true };
+
+      const postChecked = el.checked;
+      const postExpanded = el.getAttribute('aria-expanded');
+      const postUrl = location.href;
+
+      return {
+        success: true,
+        verified: true,
+        stateChange: {
+          urlChanged: preUrl !== postUrl,
+          checkedChanged: preChecked !== postChecked,
+          expandedChanged: preExpanded !== postExpanded,
+          postChecked: postChecked ?? null
+        }
+      };
     },
 
-    type(elementId, text) {
-      const el = resolveElement(elementId);
+    type(elementId, text, optionsOrSelector = {}) {
+      const targetSelector = typeof optionsOrSelector === 'string'
+        ? optionsOrSelector
+        : (optionsOrSelector?.targetSelector || null);
+      const el = resolveElement(elementId, targetSelector);
       if (!el) return { success: false, reason: 'element_not_found' };
       if (!window.__BA_Visibility.isElementVisible(el, window.innerWidth, window.innerHeight))
         return { success: false, reason: 'element_not_visible' };
       const tag = el.tagName.toLowerCase();
       if (tag !== 'input' && tag !== 'textarea') return { success: false, reason: 'element_not_typeable' };
+      
+      const prevValue = el.value || '';
+      
+      // If element already has the exact expected value, mark verified without redundant typing
+      if (prevValue === text) {
+        return { success: true, verified: true, unchanged: true, value: text };
+      }
+
       el.focus();
       dispatchNativeInput(el, text);
-      return { success: true };
+
+      const currentValue = el.value || '';
+      const verified = currentValue === text || currentValue.length > 0;
+
+      return {
+        success: true,
+        verified,
+        previousValue: prevValue.length > 0 ? '[PREVIOUS_VALUE]' : '',
+        hasValue: currentValue.length > 0
+      };
     },
 
-    scroll(direction, amount = 400) {
-      window.scrollBy({ top: direction === 'up' ? -amount : amount, behavior: 'smooth' });
-      return { success: true };
+    fill(elementId, text, options = {}) {
+      return this.type(elementId, text, options);
     },
 
-    select(elementId, optionValue) {
-      const el = resolveElement(elementId);
+    clear(elementId, targetSelector) {
+      const el = resolveElement(elementId, targetSelector);
+      if (!el) return { success: false, reason: 'element_not_found' };
+      const tag = el.tagName.toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea') return { success: false, reason: 'element_not_typeable' };
+
+      el.focus();
+      dispatchNativeInput(el, '');
+      return { success: true, verified: el.value === '', value: '' };
+    },
+
+    check(elementId, shouldCheck = true, targetSelector) {
+      const el = resolveElement(elementId, targetSelector);
+      if (!el) return { success: false, reason: 'element_not_found' };
+      
+      const targetState = Boolean(shouldCheck);
+      if (el.checked !== targetState) {
+        el.checked = targetState;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      return { success: true, verified: el.checked === targetState, checked: el.checked };
+    },
+
+    hover(elementId, targetSelector) {
+      const el = resolveElement(elementId, targetSelector);
+      if (!el) return { success: false, reason: 'element_not_found' };
+
+      el.scrollIntoView({ block: 'center', inline: 'center' });
+      el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      el.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+
+      return { success: true, verified: true };
+    },
+
+    focus(elementId, targetSelector) {
+      const el = resolveElement(elementId, targetSelector);
+      if (!el) return { success: false, reason: 'element_not_found' };
+
+      el.scrollIntoView({ block: 'center', inline: 'center' });
+      el.focus();
+      el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      return { success: true, verified: document.activeElement === el };
+    },
+
+    press_key(elementId, keyName = 'Enter', targetSelector) {
+      const el = (elementId != null || targetSelector) ? resolveElement(elementId, targetSelector) : document.activeElement || document.body;
+      if (!el) return { success: false, reason: 'target_not_found' };
+
+      const key = String(keyName);
+      const preUrl = location.href;
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key, code: key, bubbles: true, cancelable: true }));
+      el.dispatchEvent(new KeyboardEvent('keypress', { key, code: key, bubbles: true, cancelable: true }));
+      el.dispatchEvent(new KeyboardEvent('keyup', { key, code: key, bubbles: true, cancelable: true }));
+
+      // If Enter in form input, submit form if native
+      if (key.toLowerCase() === 'enter' && el.form) {
+        try { el.form.requestSubmit(); } catch (_) {}
+      }
+
+      return {
+        success: true,
+        verified: true,
+        stateChange: {
+          urlChanged: preUrl !== location.href
+        }
+      };
+    },
+
+    scroll(direction, amount = 400, targetSelector) {
+      if (targetSelector) {
+        const container = document.querySelector(targetSelector);
+        if (container) {
+          const preTop = container.scrollTop;
+          const scrollDelta = direction === 'up' ? -amount : amount;
+          container.scrollBy({ top: scrollDelta, behavior: 'instant' });
+          const postTop = container.scrollTop;
+          const didScroll = preTop !== postTop;
+          return {
+            success: true,
+            verified: didScroll,
+            didScroll,
+            preTop,
+            postTop,
+            container: targetSelector,
+            direction,
+            amount
+          };
+        }
+      }
+
+      const preY = window.scrollY;
+      const preX = window.scrollX;
+      const scrollDelta = direction === 'up' ? -amount : amount;
+      
+      window.scrollBy({ top: scrollDelta, behavior: 'instant' });
+      const postY = window.scrollY;
+      const didScroll = preY !== postY;
+
+      return {
+        success: true,
+        verified: didScroll,
+        didScroll,
+        preY,
+        postY,
+        preX,
+        direction,
+        amount
+      };
+    },
+
+    navigate(url) {
+      if (!url || typeof url !== 'string') return { success: false, reason: 'invalid_url' };
+      location.href = url;
+      return { success: true, verified: true, navigatingTo: url };
+    },
+
+    back() {
+      history.back();
+      return { success: true, verified: true };
+    },
+
+    forward() {
+      history.forward();
+      return { success: true, verified: true };
+    },
+
+    extract(elementId, targetSelector) {
+      const el = (elementId != null || targetSelector) ? resolveElement(elementId, targetSelector) : document.body;
+      if (!el) return { success: false, reason: 'element_not_found' };
+      const extractedText = (el.innerText || el.textContent || '').trim();
+      return { success: true, verified: true, text: extractedText };
+    },
+
+    select(elementId, optionValue, targetSelector) {
+      const el = resolveElement(elementId, targetSelector);
       if (!el || el.tagName.toLowerCase() !== 'select')
         return { success: false, reason: 'element_not_found_or_not_select' };
-      el.value = optionValue;
+      
+      const preValue = el.value;
+      const normalizedTarget = String(optionValue || '').trim().toLowerCase();
+      
+      // Match option by value or by visible text
+      let matchedOption = Array.from(el.options).find(opt => 
+        opt.value === optionValue || 
+        opt.value.toLowerCase() === normalizedTarget ||
+        opt.text.trim().toLowerCase() === normalizedTarget
+      );
+
+      if (matchedOption) {
+        el.value = matchedOption.value;
+      } else {
+        el.value = optionValue;
+      }
+
+      el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      return { success: true };
+
+      const postValue = el.value;
+      const verified = postValue === (matchedOption ? matchedOption.value : optionValue);
+
+      return {
+        success: true,
+        verified,
+        preValue,
+        selectedValue: postValue
+      };
     },
 
     highlightField(elementId, fieldName, expectedValue) {

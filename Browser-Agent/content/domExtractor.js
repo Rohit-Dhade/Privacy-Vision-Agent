@@ -18,6 +18,62 @@
     };
   }
 
+  function extractActiveModal() {
+    const dialog = document.querySelector('dialog[open], [role="dialog"][aria-modal="true"], [role="alertdialog"]');
+    if (!dialog || !root.__BA_Visibility.isElementVisible(dialog, window.innerWidth, window.innerHeight)) return null;
+    const heading = dialog.querySelector('h1, h2, h3, h4, [role="heading"], .modal-title, .dialog-title');
+    return {
+      isOpen: true,
+      title: heading ? (heading.innerText || heading.textContent || '').trim().slice(0, 100) : null,
+      selector: root.__BA_Selectors ? root.__BA_Selectors.getStableSelector(dialog) : null
+    };
+  }
+
+  function extractAlerts() {
+    const alerts = [];
+    document.querySelectorAll('[role="alert"], [aria-invalid="true"], .alert-danger, .error-message, [class*="error" i]').forEach((el) => {
+      if (root.__BA_Visibility.isElementVisible(el, window.innerWidth, window.innerHeight)) {
+        const text = (el.innerText || el.textContent || '').trim();
+        if (text && text.length > 2 && text.length < 300) {
+          alerts.push({ type: 'error', text });
+        }
+      }
+    });
+    document.querySelectorAll('[role="status"], .alert-success, .toast-success, [class*="success" i]').forEach((el) => {
+      if (root.__BA_Visibility.isElementVisible(el, window.innerWidth, window.innerHeight)) {
+        const text = (el.innerText || el.textContent || '').trim();
+        if (text && text.length > 2 && text.length < 300) {
+          alerts.push({ type: 'success', text });
+        }
+      }
+    });
+    return alerts.slice(0, 5);
+  }
+
+  function extractLoadingState() {
+    const busy = document.querySelector('[aria-busy="true"], .spinner, [class*="loading-spinner" i], [class*="is-loading" i]');
+    if (busy && root.__BA_Visibility.isElementVisible(busy, window.innerWidth, window.innerHeight)) {
+      return { isLoading: true, indicator: busy.getAttribute('aria-label') || 'Component loading' };
+    }
+    return { isLoading: false };
+  }
+
+  function extractFormsSummary(elements) {
+    const formMap = new Map();
+    for (const el of elements) {
+      if (el.formId) {
+        if (!formMap.has(el.formId)) {
+          formMap.set(el.formId, { id: el.formId, fieldCount: 0, populatedCount: 0, hasSubmit: false });
+        }
+        const f = formMap.get(el.formId);
+        f.fieldCount++;
+        if (el.hasValue) f.populatedCount++;
+        if (el.type === 'button' || el.type === 'input:submit') f.hasSubmit = true;
+      }
+    }
+    return Array.from(formMap.values());
+  }
+
   /**
    * Runs the full local extraction pipeline described in the project
    * spec (sections 4-9): interactive elements -> visible text ->
@@ -63,8 +119,22 @@
       // <input>/<textarea>, or the visible label of a <select>'s chosen
       // <option> — are painted on screen by the browser's native form
       // control rendering. Mark hasValue=true if a value exists.
-      if (el.value != null && el.value !== '') {
-        el.hasValue = true;
+      const elType = (el.type || '').toLowerCase();
+      const isCheckboxOrRadio = elType.includes('checkbox') || elType.includes('radio');
+      const isSelect = elType === 'select' || (el.tag && el.tag.toLowerCase() === 'select');
+
+      let isActuallyFilled = false;
+      if (isCheckboxOrRadio) {
+        isActuallyFilled = el.value === 'checked';
+      } else if (isSelect) {
+        isActuallyFilled = el.value != null && el.value !== '' && !el.value.startsWith('--');
+      } else {
+        isActuallyFilled = el.value != null && el.value !== '' && el.value !== '[REDACTED]';
+      }
+
+      el.hasValue = isActuallyFilled;
+
+      if (isActuallyFilled && el.value != null && el.value !== '' && el.value !== 'checked') {
         const fieldLabel = el.ariaLabel || el.placeholder || '';
         const valueMatches = await root.__BA_PiiDetector.scanPlainText(el.value, fieldLabel);
         if (valueMatches.length > 0) {
@@ -80,8 +150,6 @@
           // Never let the raw value escape this context once flagged.
           el.value = '[REDACTED]';
         }
-      } else {
-        el.hasValue = false;
       }
     }
 
@@ -102,6 +170,11 @@
       elementId: s.elementId != null ? s.elementId : null
     }));
 
+    const activeModal = extractActiveModal();
+    const alerts = extractAlerts();
+    const loadingState = extractLoadingState();
+    const forms = extractFormsSummary(elements);
+
     const result = {
       timestamp: Date.now(),
       url: location.href,
@@ -109,6 +182,12 @@
       elements,
       visibleText: visibleTextSummary,
       sensitiveItems: cleanSensitiveItems,
+      pageContext: {
+        activeModal,
+        alerts,
+        loadingState,
+        forms
+      },
       counts: {
         interactiveElements: elements.length,
         sensitiveItems: cleanSensitiveItems.length

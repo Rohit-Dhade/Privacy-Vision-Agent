@@ -13,15 +13,15 @@
 </head>
 <body class="pv-body">
   <div class="pv-container">
-    <!-- TopAppBar Header -->
+    <!-- Header -->
     <header class="pv-header">
       <div class="pv-brand">
         <span class="material-symbols-outlined pv-shield-icon">shield</span>
-        <h1 class="pv-title">Privacy Vision Agent</h1>
+        <h1 class="pv-title" id="headerTitle">Privacy Vision Agent</h1>
       </div>
       <div class="pv-header-actions">
-        <button id="settingsBtn" class="pv-icon-btn" title="Backend settings" aria-label="Backend settings">
-          <span class="material-symbols-outlined">settings</span>
+        <button id="settingsBtn" class="pv-icon-btn" title="Settings & Local Data" aria-label="Settings">
+          <span class="material-symbols-outlined" id="settingsBtnIcon">settings</span>
         </button>
         <button id="closeBtn" class="pv-icon-btn pv-close-btn" title="Close" aria-label="Close">
           <span class="material-symbols-outlined">close</span>
@@ -29,127 +29,223 @@
       </div>
     </header>
 
-    <!-- Sub-header Status Indicator Bar -->
-    <div class="pv-status-bar">
+    <!-- Status Indicator Bar -->
+    <div class="pv-status-bar" id="statusBar">
       <div class="pv-status-indicator">
         <div id="statusDot" class="pv-status-dot"></div>
         <span id="statusBarText" class="pv-status-text">LOCAL SCAN ACTIVE</span>
       </div>
     </div>
 
-    <!-- Main Scrollable Content -->
-    <main class="pv-main">
-      <!-- Settings Panel (Collapsible) -->
-      <section id="settingsPanel" class="pv-card pv-settings-card" hidden>
-        <div class="pv-card-header">
-          <span class="material-symbols-outlined">tune</span>
-          <span class="pv-card-title">Backend Configuration</span>
-        </div>
-        <div class="pv-card-body">
-          <label class="pv-label" for="backendUrlInput">Backend Endpoint</label>
-          <input id="backendUrlInput" type="text" class="pv-input" placeholder="http://localhost:8787/api/agent/decide" />
-          <div class="pv-settings-row">
-            <button id="saveBackendBtn" class="pv-btn pv-btn-secondary">Save Configuration</button>
-            <span id="backendSavedNote" class="pv-status-note" hidden>Saved.</span>
+    <!-- Agent Main View -->
+    <div id="agentView" class="pv-agent-view">
+      <!-- Main Scrollable Content Area -->
+      <main class="pv-main" id="mainScrollArea">
+        <!-- Welcome / Empty State (Appears above composer when no messages exist) -->
+        <div id="welcomeState" class="pv-welcome-state">
+          <div class="pv-welcome-icon-wrap">
+            <span class="material-symbols-outlined pv-welcome-shield">shield</span>
           </div>
-          <p class="pv-hint">
-            Only the redacted screenshot and a sanitized element list are sent here — never raw PII, never the original screenshot.
+          <h2 class="pv-welcome-title">How can I help you?</h2>
+          <p class="pv-welcome-subtitle">
+            Describe a task and I'll safely analyze the page with local PII protection and assist you.
           </p>
         </div>
+
+        <!-- Interactive Feed / Chat Log -->
+        <section id="chatLog" class="pv-chat-log" aria-live="polite"></section>
+
+        <!-- Page Analysis & Redaction Summary (Collapsible Panel) -->
+        <details id="detailsPanel" class="pv-card pv-details-card" hidden>
+          <summary class="pv-details-summary">
+            <div class="pv-summary-title-wrapper">
+              <span class="material-symbols-outlined">analytics</span>
+              <span>Page Summary & Redaction Details</span>
+            </div>
+            <span class="material-symbols-outlined pv-chevron">expand_more</span>
+          </summary>
+
+          <div class="pv-details-content">
+            <!-- Summary Metrics -->
+            <div class="pv-metrics-grid">
+              <div class="pv-metric-box">
+                <strong id="countElements" class="pv-metric-val">0</strong>
+                <span class="pv-metric-lbl">interactive elements</span>
+              </div>
+              <div class="pv-metric-box">
+                <strong id="countSensitive" class="pv-metric-val">0</strong>
+                <span class="pv-metric-lbl">sensitive items</span>
+              </div>
+            </div>
+
+            <!-- Screenshot Canvas Panel -->
+            <div class="pv-subpanel">
+              <div class="pv-subpanel-header">
+                <span class="material-symbols-outlined">visibility_off</span>
+                <span class="pv-subpanel-title">Redacted Screenshot Preview</span>
+              </div>
+              <div class="pv-canvas-container">
+                <canvas id="screenshotCanvas" class="pv-screenshot-canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Interactive Elements List -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined">ads_click</span> Interactive Elements</summary>
+              <div id="elementsList" class="pv-list"></div>
+              <pre id="elementsJson" class="pv-json-code"></pre>
+            </details>
+
+            <!-- Visible Text -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined">description</span> Visible Text</summary>
+              <pre id="visibleTextJson" class="pv-json-code"></pre>
+            </details>
+
+            <!-- Sensitive Information -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined">security</span> Sensitive Information Detected</summary>
+              <div id="sensitiveList" class="pv-list"></div>
+            </details>
+
+            <!-- Agent State -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined">memory</span> Internal Agent State</summary>
+              <div id="agentStateLine" class="pv-mono-line">IDLE</div>
+            </details>
+          </div>
+        </details>
+      </main>
+
+      <!-- Action Required Panel — pinned when user input needed -->
+      <section id="userInputSection" class="pv-action-required-card" hidden>
+        <div class="pv-action-required-header">
+          <div class="pv-action-title-row">
+            <span class="material-symbols-outlined pv-lock-icon">lock</span>
+            <div>
+              <h2 class="pv-card-title">ACTION REQUIRED</h2>
+              <p class="pv-action-subtitle">Secure input needed to proceed.</p>
+            </div>
+          </div>
+        </div>
+        <div id="userInputContainer" class="pv-user-input-container"></div>
       </section>
 
-      <!-- Task Prompt Area -->
-      <section class="pv-card pv-input-card">
-        <div class="pv-input-wrapper">
-          <textarea id="taskInput" class="pv-textarea" rows="2" placeholder="Describe what you'd like help with..."></textarea>
-          <div class="pv-input-actions">
-            <button id="sendBtn" class="pv-btn pv-btn-primary">
-              <span>Send</span>
+      <!-- Compact Input Composer with Integrated Mode Control -->
+      <section id="composerSection" class="pv-composer-section">
+        <div class="pv-composer-box">
+          <textarea id="taskInput" class="pv-composer-textarea" rows="1" placeholder="Describe what you'd like help with..."></textarea>
+          
+          <div class="pv-composer-toolbar">
+            <!-- Integrated Mode Dropdown Control -->
+            <div class="pv-mode-dropdown-wrapper">
+              <button id="modeDropdownBtn" type="button" class="pv-mode-dropdown-btn" title="Change execution mode" aria-haspopup="true" aria-expanded="false">
+                <span class="material-symbols-outlined pv-mode-btn-icon">tune</span>
+                <span id="modeDropdownLabel" class="pv-mode-dropdown-label">Assist Me (HITL)</span>
+                <span class="material-symbols-outlined pv-mode-chevron">expand_more</span>
+              </button>
+
+              <!-- Popover Menu for Mode Selection -->
+              <div id="modeMenuPopover" class="pv-mode-popover" hidden>
+                <label class="pv-mode-popover-item active" id="modeOptHitl">
+                  <input type="radio" name="agentMode" value="hitl" id="radioModeHitl" checked />
+                  <div class="pv-mode-popover-text">
+                    <span class="pv-mode-popover-title">Assist Me (HITL)</span>
+                    <span class="pv-mode-popover-desc">Guides you to enter information manually</span>
+                  </div>
+                  <span class="material-symbols-outlined pv-mode-check">check</span>
+                </label>
+                <label class="pv-mode-popover-item" id="modeOptComplete">
+                  <input type="radio" name="agentMode" value="complete" id="radioModeComplete" />
+                  <div class="pv-mode-popover-text">
+                    <span class="pv-mode-popover-title">Complete Automatically</span>
+                    <span class="pv-mode-popover-desc">Auto-fills from local store; asks if missing</span>
+                  </div>
+                  <span class="material-symbols-outlined pv-mode-check">check</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Send Action Button -->
+            <button id="sendBtn" type="button" class="pv-composer-send-btn" title="Send instruction" aria-label="Send">
               <span class="material-symbols-outlined">send</span>
             </button>
           </div>
         </div>
         <p id="errorLine" class="pv-error-banner" hidden></p>
       </section>
+    </div>
 
-      <!-- Interactive Feed / Chat Log -->
-      <section id="chatLog" class="pv-chat-log" aria-live="polite"></section>
-
-
-      <!-- Page Analysis & Redaction Summary (Collapsible Panel) -->
-      <details id="detailsPanel" class="pv-card pv-details-card" hidden>
-        <summary class="pv-details-summary">
-          <div class="pv-summary-title-wrapper">
-            <span class="material-symbols-outlined">analytics</span>
-            <span>Page Summary & Redaction Details</span>
+    <!-- Full Settings View (Replaces Agent View when Active) -->
+    <section id="settingsPanel" class="pv-settings-view" hidden>
+      <div class="pv-settings-container">
+        <!-- Backend Configuration -->
+        <div class="pv-settings-card">
+          <div class="pv-card-header">
+            <span class="material-symbols-outlined">dns</span>
+            <span class="pv-card-title">Backend Configuration</span>
           </div>
-          <span class="material-symbols-outlined pv-chevron">expand_more</span>
-        </summary>
-
-        <div class="pv-details-content">
-          <!-- Summary Metrics -->
-          <div class="pv-metrics-grid">
-            <div class="pv-metric-box">
-              <strong id="countElements" class="pv-metric-val">0</strong>
-              <span class="pv-metric-lbl">interactive elements</span>
+          <div class="pv-card-body">
+            <label class="pv-label" for="backendUrlInput">Backend API Endpoint</label>
+            <input id="backendUrlInput" type="text" class="pv-input" placeholder="http://localhost:5000/api/agent/step" />
+            <div class="pv-settings-row">
+              <button id="saveBackendBtn" class="pv-btn pv-btn-primary pv-btn-sm">Save Configuration</button>
+              <span id="backendSavedNote" class="pv-status-note" hidden>Saved.</span>
             </div>
-            <div class="pv-metric-box">
-              <strong id="countSensitive" class="pv-metric-val">0</strong>
-              <span class="pv-metric-lbl">sensitive items</span>
-            </div>
+            <p class="pv-hint">
+              Only redacted screenshots and sanitized DOM structures are sent here — never raw PII or private store values.
+            </p>
           </div>
-
-          <!-- Screenshot Canvas Panel -->
-          <div class="pv-subpanel">
-            <div class="pv-subpanel-header">
-              <span class="material-symbols-outlined">visibility_off</span>
-              <span class="pv-subpanel-title">Redacted Screenshot Preview</span>
-            </div>
-            <div class="pv-canvas-container">
-              <canvas id="screenshotCanvas" class="pv-screenshot-canvas"></canvas>
-            </div>
-          </div>
-
-          <!-- Interactive Elements List -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">ads_click</span> Interactive Elements</summary>
-            <div id="elementsList" class="pv-list"></div>
-            <pre id="elementsJson" class="pv-json-code"></pre>
-          </details>
-
-          <!-- Visible Text -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">description</span> Visible Text</summary>
-            <pre id="visibleTextJson" class="pv-json-code"></pre>
-          </details>
-
-          <!-- Sensitive Information -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">security</span> Sensitive Information Detected</summary>
-            <div id="sensitiveList" class="pv-list"></div>
-          </details>
-
-          <!-- Agent State -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">memory</span> Internal Agent State</summary>
-            <div id="agentStateLine" class="pv-mono-line">IDLE</div>
-          </details>
         </div>
-      </details>
-    </main>
 
-    <!-- Action Required Panel — pinned above footer, never scrolls away -->
-    <section id="userInputSection" class="pv-action-required-card" hidden>
-      <div class="pv-action-required-header">
-        <div class="pv-action-title-row">
-          <span class="material-symbols-outlined pv-lock-icon">lock</span>
-          <div>
-            <h2 class="pv-card-title">ACTION REQUIRED</h2>
-            <p class="pv-action-subtitle">Secure input needed to proceed.</p>
+        <!-- Local Private Information Store (Local Only) -->
+        <div class="pv-settings-card">
+          <div class="pv-store-section">
+            <div class="pv-store-header-row">
+              <div class="pv-store-title-wrap">
+                <span class="material-symbols-outlined pv-store-icon">shield_person</span>
+                <span class="pv-card-title">Personal Information</span>
+              </div>
+              <span class="pv-badge-local">STRICTLY LOCAL</span>
+            </div>
+            <p class="pv-hint pv-no-margin">
+              Store profile data (e.g. name, email, phone, college) on-device for automatic form filling. Values remain strictly in your browser.
+            </p>
+
+            <!-- Add / Edit Input Group -->
+            <div class="pv-store-form">
+              <div class="pv-store-form-row">
+                <input id="storeKeyInput" type="text" class="pv-input pv-store-input pv-store-key-input" placeholder="Key (e.g. email, phone)" />
+                <div class="pv-store-val-wrapper">
+                  <input id="storeValInput" type="password" class="pv-input pv-store-input pv-store-val-input" placeholder="Value (stored locally)" />
+                  <button id="toggleStoreValMaskBtn" type="button" class="pv-icon-btn pv-store-mask-btn" title="Toggle visibility" aria-label="Toggle visibility">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </div>
+              </div>
+              <div class="pv-store-actions-row">
+                <button id="saveStoreEntryBtn" type="button" class="pv-btn pv-btn-primary pv-btn-sm">
+                  <span class="material-symbols-outlined pv-btn-icon">add</span>
+                  <span id="saveStoreEntryBtnText">Save Information</span>
+                </button>
+                <button id="cancelStoreEditBtn" type="button" class="pv-btn pv-btn-sm pv-btn-subtle" hidden>Cancel</button>
+                <span id="storeSavedNote" class="pv-status-note" hidden>Saved locally.</span>
+              </div>
+            </div>
+
+            <!-- Stored Items List -->
+            <div class="pv-store-list-container">
+              <div class="pv-store-list-header">
+                <span class="pv-label pv-no-margin">Stored Items (<span id="storeItemsCount">0</span>)</span>
+                <button id="clearStoreBtn" type="button" class="pv-text-btn pv-text-danger" title="Clear all local data">Clear All</button>
+              </div>
+              <div id="storeEntriesList" class="pv-store-entries-list">
+                <!-- Dynamically rendered items -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div id="userInputContainer" class="pv-user-input-container"></div>
     </section>
 
     <!-- Footer Component -->
@@ -165,6 +261,16 @@
   <!-- Agent architecture -->
   <script src="../agent/stateManager.js"></script>
   <script src="../agent/taskManager.js"></script>
+  <script src="../agent/taskMemory.js"></script>
+  <script src="../agent/privateDataStore.js"></script>
+  <script src="../agent/fieldMatcher.js"></script>
+  <script src="../agent/stateDiffEngine.js"></script>
+  <script src="../agent/formAnalyzer.js"></script>
+  <script src="../agent/consequentialActionDetector.js"></script>
+  <script src="../agent/actionVerifier.js"></script>
+  <script src="../agent/recoveryEngine.js"></script>
+  <script src="../agent/privacyBoundary.js"></script>
+  <script src="../agent/visualDomGrounder.js"></script>
   <script src="../agent/agentBackend.js"></script>
   <script src="../agent/agentController.js"></script>
   <script src="../agent/userInputManager.js"></script>
