@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser Agent — MCQ Test</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#17202a}
+header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #d9dee5;padding:18px 24px}
+header h1{margin:0 0 5px;font-size:22px} header p{margin:0;color:#667085;font-size:14px}
+main{width:min(900px,calc(100% - 32px));margin:28px auto 60px}
+.question{background:#fff;border:1px solid #d9dee5;border-radius:12px;padding:22px;margin-bottom:22px}
+.question h2{font-size:17px;line-height:1.5;margin:0 0 16px} .question-number{color:#475467;font-size:13px;font-weight:700;margin-bottom:8px}
+label.option{display:block;border:1px solid #d9dee5;border-radius:8px;padding:13px 14px;margin:9px 0;cursor:pointer;background:#fafbfc}
+label.option:hover{background:#f2f4f7} label.option input{margin-right:10px}
+#submitArea{background:#fff;border:1px solid #d9dee5;border-radius:12px;padding:24px;text-align:center;margin-top:30px}
+#submitBtn{border:0;border-radius:8px;padding:13px 26px;background:#1f6feb;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+#submitBtn:disabled{opacity:.6;cursor:not-allowed} #result{margin-top:16px;padding:14px;border-radius:8px;display:none;font-weight:700;background:#ecfdf3;color:#067647;border:1px solid #abefc6}
+</style>
+</head>
+<body>
+<header>
+<h1>Browser Agent — 10 Question MCQ Test</h1>
+<p>Synthetic local test page for DOM understanding, option selection, scrolling, and final-submit authorization.</p>
+</header>
+<main>
+<form id="quizForm">
+      <section class="question">
+        <div class="question-number">Question 1 of 10</div>
+        <h2>Which data structure follows the Last-In, First-Out (LIFO) principle?</h2>
+        <label class="option"><input type="radio" name="q1" value="A"> A. Queue</label>
+        <label class="option"><input type="radio" name="q1" value="B"> B. Stack</label>
+        <label class="option"><input type="radio" name="q1" value="C"> C. Heap</label>
+        <label class="option"><input type="radio" name="q1" value="D"> D. Graph</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 2 of 10</div>
+        <h2>What is the time complexity of binary search on a sorted array?</h2>
+        <label class="option"><input type="radio" name="q2" value="A"> A. O(n)</label>
+        <label class="option"><input type="radio" name="q2" value="B"> B. O(n²)</label>
+        <label class="option"><input type="radio" name="q2" value="C"> C. O(log n)</label>
+        <label class="option"><input type="radio" name="q2" value="D"> D. O(1)</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 3 of 10</div>
+        <h2>Which protocol is primarily used to securely transfer web pages?</h2>
+        <label class="option"><input type="radio" name="q3" value="A"> A. FTP</label>
+        <label class="option"><input type="radio" name="q3" value="B"> B. HTTP</label>
+        <label class="option"><input type="radio" name="q3" value="C"> C. SMTP</label>
+        <label class="option"><input type="radio" name="q3" value="D"> D. HTTPS</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 4 of 10</div>
+        <h2>Which component of an operating system manages processes and CPU scheduling?</h2>
+        <label class="option"><input type="radio" name="q4" value="A"> A. Kernel</label>
+        <label class="option"><input type="radio" name="q4" value="B"> B. Compiler</label>
+        <label class="option"><input type="radio" name="q4" value="C"> C. Shell script</label>
+        <label class="option"><input type="radio" name="q4" value="D"> D. Linker</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 5 of 10</div>
+        <h2>Which SQL command is used to retrieve data from a table?</h2>
+        <label class="option"><input type="radio" name="q5" value="A"> A. INSERT</label>
+        <label class="option"><input type="radio" name="q5" value="B"> B. UPDATE</label>
+        <label class="option"><input type="radio" name="q5" value="C"> C. SELECT</label>
+        <label class="option"><input type="radio" name="q5" value="D"> D. DELETE</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 6 of 10</div>
+        <h2>Which AWS service provides object storage?</h2>
+        <label class="option"><input type="radio" name="q6" value="A"> A. EC2</label>
+        <label class="option"><input type="radio" name="q6" value="B"> B. S3</label>
+        <label class="option"><input type="radio" name="q6" value="C"> C. RDS</label>
+        <label class="option"><input type="radio" name="q6" value="D"> D. VPC</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 7 of 10</div>
+        <h2>Which Java keyword is used to inherit a class?</h2>
+        <label class="option"><input type="radio" name="q7" value="A"> A. implements</label>
+        <label class="option"><input type="radio" name="q7" value="B"> B. extends</label>
+        <label class="option"><input type="radio" name="q7" value="C"> C. inherits</label>
+        <label class="option"><input type="radio" name="q7" value="D"> D. super</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 8 of 10</div>
+        <h2>Which layer of the OSI model is responsible for routing packets?</h2>
+        <label class="option"><input type="radio" name="q8" value="A"> A. Transport</label>
+        <label class="option"><input type="radio" name="q8" value="B"> B. Session</label>
+        <label class="option"><input type="radio" name="q8" value="C"> C. Network</label>
+        <label class="option"><input type="radio" name="q8" value="D"> D. Presentation</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 9 of 10</div>
+        <h2>What does DNS primarily translate?</h2>
+        <label class="option"><input type="radio" name="q9" value="A"> A. Domain names to IP addresses</label>
+        <label class="option"><input type="radio" name="q9" value="B"> B. IP addresses to MAC addresses only</label>
+        <label class="option"><input type="radio" name="q9" value="C"> C. Files to databases</label>
+        <label class="option"><input type="radio" name="q9" value="D"> D. HTML to CSS</label>
+      </section>
+      <section class="question">
+        <div class="question-number">Question 10 of 10</div>
+        <h2>Which algorithm is commonly used to find the shortest path in a graph with non-negative edge weights?</h2>
+        <label class="option"><input type="radio" name="q10" value="A"> A. Dijkstra's algorithm</label>
+        <label class="option"><input type="radio" name="q10" value="B"> B. Bubble sort</label>
+        <label class="option"><input type="radio" name="q10" value="C"> C. KMP algorithm</label>
+        <label class="option"><input type="radio" name="q10" value="D"> D. Merge sort</label>
+      </section>
+<section id="submitArea">
+<button id="submitBtn" type="submit">Submit Quiz</button>
+<div id="result" role="status" aria-live="polite"></div>
+</section>
+</form>
+</main>
+<script>
+const answers = {q1: "B", q2: "C", q3: "D", q4: "A", q5: "C", q6: "B", q7: "B", q8: "C", q9: "A", q10: "A"};
+document.getElementById("quizForm").addEventListener("submit", function(event) {
+  event.preventDefault();
+  let score = 0;
+  Object.entries(answers).forEach(([name, correct]) => {
+    const selected = document.querySelector(`input[name="${name}"]:checked`);
+    if (selected && selected.value === correct) score++;
+  });
+  const result = document.getElementById("result");
+  result.style.display = "block";
+  result.textContent = `Exam submitted successfully. Score: ${score}/10.`;
+  document.getElementById("submitBtn").disabled = true;
+  window.dispatchEvent(new CustomEvent("examSubmitted", {
+    detail: {submitted:true, score:score, total:10}
+  }));
+  console.log("[TEST PAGE] EXAM_SUBMITTED", {score:score,total:10});
+});
+</script>
+</body>
+</html>
