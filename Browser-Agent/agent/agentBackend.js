@@ -34,24 +34,60 @@
 
   function resolveElementId(targetSelector, elements) {
     if (!targetSelector || !Array.isArray(elements)) return null;
-    // 1. Direct exact match
-    let match = elements.find((el) => el.selector === targetSelector);
+  
+    const target = String(targetSelector).trim();
+  
+    // 1. Exact selector match
+    let match = elements.find(
+      (el) => String(el.selector || '').trim() === target
+    );
     if (match != null) return match.id;
-
-    // 2. ID-based matching (e.g. #fullName, input#fullName, or [id='fullName'])
-    if (targetSelector.startsWith('#')) {
-      const cleanId = targetSelector.slice(1);
-      match = elements.find((el) => el.selector === targetSelector || (el.selector && el.selector.includes(`#${cleanId}`)));
+  
+    // 2. Treat "#17" as an elementId when the ID is numeric/string
+    if (target.startsWith('#')) {
+      const possibleId = target.slice(1);
+  
+      match = elements.find(
+        (el) => String(el.id) === possibleId
+      );
+  
       if (match != null) return match.id;
     }
-
-    // 3. Name or substring selector matching
-    const normalizedTarget = targetSelector.trim().toLowerCase();
+  
+    // 3. Direct element ID match
+    match = elements.find(
+      (el) => String(el.id) === target
+    );
+    if (match != null) return match.id;
+  
+    // 4. Existing ID-based CSS selector matching
+    if (target.startsWith('#')) {
+      const cleanId = target.slice(1);
+  
+      match = elements.find(
+        (el) =>
+          el.selector === target ||
+          (el.selector && el.selector.includes(`#${cleanId}`))
+      );
+  
+      if (match != null) return match.id;
+    }
+  
+    // 5. Normalized selector matching
+    const normalizedTarget = target.toLowerCase();
+  
     match = elements.find((el) => {
       if (!el.selector) return false;
-      const s = el.selector.trim().toLowerCase();
-      return s === normalizedTarget || s.endsWith(normalizedTarget) || normalizedTarget.endsWith(s);
+  
+      const s = String(el.selector).trim().toLowerCase();
+  
+      return (
+        s === normalizedTarget ||
+        s.endsWith(normalizedTarget) ||
+        normalizedTarget.endsWith(s)
+      );
     });
+  
     return match != null ? match.id : null;
   }
 
@@ -236,14 +272,7 @@
 
     // Task-relevance prioritization:
     // If elements list is large (> 60), prioritize high scoring & core elements to avoid DOM noise
-    let finalRecords;
-    if (scoredElements.length > 60) {
-      scoredElements.sort((a, b) => b.score - a.score);
-      const topSelected = scoredElements.slice(0, 60);
-      finalRecords = topSelected.map(s => s.record);
-    } else {
-      finalRecords = scoredElements.map(s => s.record);
-    }
+    const finalRecords = scoredElements.map(s => s.record);
 
     return {
       url,
@@ -351,18 +380,23 @@
           };
         }
 
-        // In Complete Mode, route fill to fill_from_local so local store can fulfill it
-        if (mode === 'complete') {
-          return {
-            action: 'fill_from_local',
-            elementId: el?.id ?? elementId,
-            targetSelector: el?.selector || targetSelector,
-            value: value || null
-          };
+        // Never allow LLM to directly fill a sensitive field
+        if (el?.sensitive === true || el?.sensitive === 'unknown') {
+            return buildAskUserAction(
+                el,
+                el?.id ?? elementId,
+                el?.selector || targetSelector
+            );
         }
 
-        // In Assist Me (HITL) Mode, always use ask_user for visual guide
-        return buildAskUserAction(el, el?.id ?? elementId, el?.selector || targetSelector);
+        // Normal LLM-provided value.
+        // Let the action executor actually fill the field.
+        return {
+            action: 'fill',
+            elementId: el?.id ?? elementId,
+            targetSelector: el?.selector || targetSelector,
+            value: value ?? null
+};
       }
 
       // ── FILL FROM LOCAL PRIVATE STORE ──────────────────────────────────────

@@ -20,6 +20,8 @@
     '[role="checkbox"]',
     '[role="radio"]',
     '[role="combobox"]',
+    '[role="searchbox"]',
+    '[role="textbox"]',
     '[role="switch"]',
     '[role="option"]',
     '[tabindex]'
