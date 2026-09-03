@@ -66,33 +66,97 @@ const TARGETED_ACTIONS = new Set([
   'click', 'fill', 'type', 'clear', 'select', 'check', 'uncheck', 'radio', 'hover', 'focus', 'fill_from_local', 'upload'
 ]);
 
-function violatesSensitiveFieldRule(action, domSkeleton) {
-  if ((action.action !== "fill" && action.action !== "type") || action.value === null) return false;
 
-  const targetElement = domSkeleton?.elements?.find(
-    (el) => el.selector === action.targetSelector
-  );
+function findTargetElement(action, domSkeleton) {
+  const elements = domSkeleton?.elements;
+
+  if (!Array.isArray(elements) || !action?.targetSelector) {
+    return null;
+  }
+
+  const target = String(action.targetSelector).trim();
+
+  return elements.find((el) => {
+    if (!el) return false;
+
+    // Exact CSS selector
+    if (String(el.selector || '').trim() === target) {
+      return true;
+    }
+
+    // Internal element ID: "#17"
+    if (target.startsWith('#')) {
+      return String(el.id) === target.slice(1);
+    }
+
+    // Direct ID
+    return String(el.id) === target;
+  }) || null;
+}
+
+
+function violatesSensitiveFieldRule(action, domSkeleton) {
+  if (
+    (action.action !== "fill" && action.action !== "type") ||
+    action.value === null
+  ) {
+    return false;
+  }
+
+  const targetElement = findTargetElement(action, domSkeleton);
 
   if (!targetElement) return false;
 
-  return targetElement.sensitive === true || targetElement.sensitive === "unknown";
+  return (
+    targetElement.sensitive === true ||
+    targetElement.sensitive === "unknown"
+  );
 }
 
 function targetSelectorIsInvalid(action, domSkeleton) {
   const isTargeted = TARGETED_ACTIONS.has(action.action);
-  
-  // If targeted action has no selector, it's invalid
-  if (isTargeted && (!action.targetSelector || typeof action.targetSelector !== 'string')) {
+  const elements = domSkeleton?.elements;
+
+  // Targeted actions must have a target
+  if (
+    isTargeted &&
+    (!action.targetSelector || typeof action.targetSelector !== 'string')
+  ) {
     return true;
   }
 
-  // If selector is provided, verify existence in DOM skeleton
-  if (action.targetSelector && typeof action.targetSelector === 'string') {
-    const exists = domSkeleton?.elements?.some((el) => el.selector === action.targetSelector);
-    return !exists;
+  if (!action.targetSelector || typeof action.targetSelector !== 'string') {
+    return false;
   }
 
-  return false;
+  const target = action.targetSelector.trim();
+
+  const exists = Array.isArray(elements) && elements.some((el) => {
+    if (!el) return false;
+
+    // 1. Exact CSS selector match
+    if (String(el.selector || '').trim() === target) {
+      return true;
+    }
+
+    // 2. Allow "#17" to refer to internal DOM element ID "17"
+    if (target.startsWith('#')) {
+      const id = target.slice(1);
+
+      if (String(el.id) === id) {
+        return true;
+      }
+    }
+
+    // 3. Allow direct element ID
+    if (String(el.id) === target) {
+      return true;
+    }
+
+    return false;
+  });
+
+  return !exists;
 }
 
 const INJECTION_COMPLIANCE_PATTERNS = [
@@ -145,56 +209,3 @@ function validateAction(rawText, domSkeleton) {
 }
 
 export default validateAction
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/***
-node test/testCloudProvider.js
---- Request being sent ---
-{
-  "model": "pixtral-12b-2409",
-  "max_tokens": 1024,
-  "messages": [
-    {
-      "role": "system",
-      "content": "You are a browser automation agent. You receive a screenshot where sensitive regions have already been redacted (blacked out or blurred) by the client for privacy. The accompanying DOM skeleton tells you exactly what each redacted region represents via a redactionTag (e.g. REDACTED_PASSWORD, REDACTED_ID_DOCUMENT). Treat these as real, existing fields/content — never ask for their actual values, never assume they are empty. Your job is to decide the next single UI action to progress the given task. Respond ONLY with valid JSON matching this schema: { \"action\": \"click|scroll|fill|wait|done\", \"targetSelector\": string, \"value\": string|null, \"reasoning\": string }. Never propose a 'fill' action with a value for any selector whose element is flagged sensitive."
-    },
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "text",
-          "text": "Task: Click the submit button\n\nDOM skeleton (JSON):\n{\"url\":\"https://example.com\",\"elements\":[{\"id\":\"el_1\",\"tag\":\"button\",\"selector\":\"#submit-btn\",\"box\":{\"x\":10,\"y\":10,\"width\":80,\"height\":30},\"sensitive\":false}]}\n\nRedaction map (JSON):\n[]\n\nAction history so far:\n[]\n\nHere is the current (redacted) screenshot:"
-        },
-        {
-          "type": "image_url",
-          "imageUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
-        }
-      ]
-    }
-  ]
-}
-
---- Raw VLM response ---
-```json
-{
-  "action": "click",
-  "targetSelector": "#submit-btn",
-  "value": null,
-  "reasoning": "The DOM skeleton explicitly identifies a non-sensitive button element with the selector `#submit-btn` (ID: `el_1`), which is the target for submitting the form. No redaction conflicts exist, and the task explicitly requires clicking the submit button. This is the correct next action."
-}
-```
-***/

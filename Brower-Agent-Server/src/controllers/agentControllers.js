@@ -22,6 +22,7 @@ async function handleAgentStep(req, res) {
             console.log(`[VLM CONTEXT] taskTokens=${request._metrics.taskTokens} systemTokens=${request._metrics.systemTokens} stateTokens=${request._metrics.stateTokens} historyTokens=${request._metrics.historyTokens} domTokens=${request._metrics.domTokens} pageContextTokens=${request._metrics.pageContextTokens} visualTokens=${request._metrics.visualTokens} estimatedInputTokens=${request._metrics.estimatedInputTokens} maxOutputTokens=${request._metrics.maxOutputTokens} estimatedTotal=${request._metrics.estimatedTotal} budget=${request._metrics.budgetLimit} withinBudget=${request._metrics.withinBudget}`);
         }
         const rawResponse = await reason(request);
+        console.log(`[VLM RESPONSE] ${rawResponse}`);
         const result = validateAction(rawResponse, payload.domSkeleton);
 
         if (!result.ok) {
