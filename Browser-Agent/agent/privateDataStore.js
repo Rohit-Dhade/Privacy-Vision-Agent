@@ -125,13 +125,45 @@
      * @param {string} key
      * @returns {Promise<string | null>}
      */
-    async get(key) {
+    /**
+     * The field matcher returns the most SPECIFIC key for a field (a
+     * "Residential Address" label resolves to home_address, "PIN Code" to
+     * zip), but people save their data under whatever name comes to mind
+     * ("address", "pincode"). Without this, a value the user had saved was
+     * silently not used and the agent asked them to type it. Exact key
+     * first, then these fallbacks in order. Only related keys are listed,
+     * never across meanings (a home address never falls back to billing).
+     */
+    static keyCandidates(key) {
+      const k = key.trim().toLowerCase();
+      const ALIASES = {
+        home_address: ['address', 'residential_address', 'street_address'],
+        address: ['home_address', 'residential_address', 'street_address'],
+        street_address: ['address', 'home_address'],
+        zip: ['pincode', 'pin_code', 'postal_code', 'postcode', 'zipcode', 'zip_code'],
+        name: ['full_name', 'fullname'],
+        phone: ['mobile', 'mobile_number', 'phone_number', 'mobile_phone'],
+        dob: ['date_of_birth', 'birthdate', 'birth_date'],
+        email: ['email_address', 'e-mail'],
+        emergency_phone: ['emergency_contact', 'emergency_contact_number', 'emergency_number'],
+      };
+      return [k, ...(ALIASES[k] || [])];
+    }
+
+    async _resolve(key) {
       if (!key || typeof key !== 'string') return null;
-      const normalizedKey = key.trim().toLowerCase();
       const store = await this._readStore();
-      if (!Object.prototype.hasOwnProperty.call(store, normalizedKey)) return null;
-      const val = store[normalizedKey];
-      return PrivateDataStore.isValueAvailable(val) ? val : null;
+      for (const candidate of PrivateDataStore.keyCandidates(key)) {
+        if (Object.prototype.hasOwnProperty.call(store, candidate) && PrivateDataStore.isValueAvailable(store[candidate])) {
+          return { key: candidate, value: store[candidate] };
+        }
+      }
+      return null;
+    }
+
+    async get(key) {
+      const hit = await this._resolve(key);
+      return hit ? hit.value : null;
     }
 
     /**
@@ -140,11 +172,7 @@
      * @returns {Promise<boolean>}
      */
     async has(key) {
-      if (!key || typeof key !== 'string') return false;
-      const normalizedKey = key.trim().toLowerCase();
-      const store = await this._readStore();
-      if (!Object.prototype.hasOwnProperty.call(store, normalizedKey)) return false;
-      return PrivateDataStore.isValueAvailable(store[normalizedKey]);
+      return (await this._resolve(key)) !== null;
     }
 
     /**

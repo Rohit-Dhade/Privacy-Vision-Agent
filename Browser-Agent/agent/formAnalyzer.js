@@ -32,6 +32,14 @@
         return true;
       }
 
+      // Extracted elements carry no `tag`; content/interactiveElements.js's
+      // classifyType() reports textareas and selects as plain 'textarea' /
+      // 'select'. Without this, every textarea (e.g. an address box) and
+      // every dropdown was invisible to form analysis and local autofill.
+      if (type === 'textarea' || type === 'select') {
+        return true;
+      }
+
       if (type.startsWith('input:') && !type.includes('submit') && !type.includes('button')) {
         return true;
       }

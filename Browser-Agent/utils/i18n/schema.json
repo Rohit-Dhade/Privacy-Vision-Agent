@@ -1,0 +1,29 @@
+{
+  "$comment": "Schema for a Privacy-Vision-Agent language pack (utils/i18n/packs/*.json). This is the contract that lets adding a language be a pure data contribution — drop a new file here that satisfies this schema, run build-language-packs.js, and it's live. No JavaScript changes required. Enforced by build-language-packs.js's validatePack(), which has no third-party dependency (ajv, zod, etc.) on purpose, so this stays a zero-install, copy-the-repo-and-run tool.",
+  "requiredMeta": ["langTag", "label"],
+  "meta": {
+    "langTag": "BCP-47 language tag, e.g. 'hi-IN', 'mr-IN', 'ta-IN'. Used as both the registry key and SpeechSynthesisUtterance.lang.",
+    "label": "Short (1-4 glyph) label shown on the in-page language-toggle button, in the target language's own script (e.g. 'हिं' for Hindi, not 'HI')."
+  },
+  "requiredFieldKeys": [
+    "pan",
+    "aadhaar",
+    "upi",
+    "email",
+    "phone",
+    "password",
+    "dob",
+    "name",
+    "ifsc",
+    "account",
+    "generic"
+  ],
+  "requiredEntryFields": ["title", "subtitle", "desc", "hint"],
+  "entryFieldRules": {
+    "title": "Short field name (e.g. the field's proper noun, 2-6 words).",
+    "subtitle": "One-line clarification of what the field/number is.",
+    "desc": "1-2 sentence instruction telling the user exactly what to type and where to find it.",
+    "hint": "Short format reminder or safety note (e.g. 'no spaces', 'never sent to a server')."
+  },
+  "notes": "'generic' is the required fallback entry used whenever a field key has no dedicated translation (see i18nLabels.js's getTranslation()) — every pack must include it. All string values must be non-empty after trimming."
+}

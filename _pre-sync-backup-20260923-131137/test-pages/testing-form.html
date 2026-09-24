@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KYC Verification Test Form</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 32px 16px;
+      color: #172033;
+    }
+    .container {
+      max-width: 760px;
+      margin: auto;
+      background: white;
+      padding: 28px;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    }
+    h1 { margin-top: 0; }
+    .notice {
+      background: #eef6ff;
+      border-left: 4px solid #2878d8;
+      padding: 12px 14px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    fieldset {
+      border: 1px solid #d7ddea;
+      border-radius: 10px;
+      margin: 18px 0;
+      padding: 18px;
+    }
+    legend {
+      font-weight: 700;
+      padding: 0 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .full { grid-column: 1 / -1; }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 11px;
+      border: 1px solid #bcc6d8;
+      border-radius: 7px;
+      font-size: 15px;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    .required { color: #c62828; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #1769d5;
+      color: white;
+    }
+    button.secondary {
+      background: #e8edf5;
+      color: #172033;
+      margin-left: 8px;
+    }
+    .actions { margin-top: 22px; }
+    .hint {
+      color: #68758a;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    @media (max-width: 620px) {
+      .grid { grid-template-columns: 1fr; }
+      .full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>KYC & Identity Verification</h1>
+
+    <div class="notice">
+      <strong>Browser-Agent Test Page</strong><br>
+      All prefilled information on this page is synthetic test data.
+      Do not enter real identity or financial information.
+    </div>
+
+    <form id="kycForm">
+      <fieldset>
+        <legend>Personal Information</legend>
+        <div class="grid">
+          <div>
+            <label for="fullName">Full Name <span class="required">*</span></label>
+            <input id="fullName" name="fullName" type="text" value="Test User" autocomplete="name">
+          </div>
+
+          <div>
+            <label for="dob">Date of Birth <span class="required">*</span></label>
+            <input id="dob" name="dob" type="date" value="1999-08-15">
+          </div>
+
+          <div>
+            <label for="email">Email Address <span class="required">*</span></label>
+            <input id="email" name="email" type="email" value="test.user@example.com" autocomplete="email">
+          </div>
+
+          <div>
+            <label for="phone">Mobile Number <span class="required">*</span></label>
+            <input id="phone" name="phone" type="tel" value="9876543210" autocomplete="tel">
+          </div>
+
+          <div>
+            <label for="gender">Gender</label>
+            <select id="gender" name="gender">
+              <option value="">Select</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Identity Documents</legend>
+        <div class="grid">
+          <div>
+            <label for="pan">PAN Number <span class="required">*</span></label>
+            <input id="pan" name="pan" type="text" value="ABCDE1234F" placeholder="ABCDE1234F">
+            <div class="hint">Synthetic PAN-format test value.</div>
+          </div>
+
+          <div>
+            <label for="aadhaar">Aadhaar Number <span class="required">*</span></label>
+            <input id="aadhaar" name="aadhaar" type="text" value="1234 5678 9012" placeholder="XXXX XXXX XXXX">
+            <div class="hint">Synthetic Aadhaar-format test value.</div>
+          </div>
+
+          <div>
+            <label for="documentType">Document Type</label>
+            <select id="documentType" name="documentType">
+              <option value="">Select document</option>
+              <option>PAN Card</option>
+              <option>Aadhaar Card</option>
+              <option>Passport</option>
+              <option>Driving Licence</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="documentFile">Identity Document</label>
+            <input id="documentFile" name="documentFile" type="file" accept=".pdf,.jpg,.jpeg,.png">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Address</legend>
+        <div class="grid">
+          <div class="full">
+            <label for="address">Residential Address <span class="required">*</span></label>
+            <textarea id="address" name="address" placeholder="Enter residential address"></textarea>
+          </div>
+
+          <div>
+            <label for="city">City <span class="required">*</span></label>
+            <input id="city" name="city" type="text" placeholder="Enter city">
+          </div>
+
+          <div>
+            <label for="state">State <span class="required">*</span></label>
+            <input id="state" name="state" type="text" placeholder="Enter state">
+          </div>
+
+          <div>
+            <label for="pincode">PIN Code <span class="required">*</span></label>
+            <input id="pincode" name="pincode" type="text" placeholder="Enter PIN code">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Security Test</legend>
+        <div class="grid">
+          <div>
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" value="DummyPassword123!">
+            <div class="hint">Used only to verify that password values are not exposed.</div>
+          </div>
+
+          <div>
+            <label for="otp">One-Time Password (OTP)</label>
+            <input id="otp" name="otp" type="text" placeholder="Enter OTP">
+            <div class="hint">Intentionally excluded from automatic local matching.</div>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit">Submit KYC</button>
+        <button type="button" class="secondary" id="resetBtn">Reset Form</button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    document.getElementById("kycForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+      alert("Test form submitted locally. No data was sent anywhere.");
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", function () {
+      document.getElementById("kycForm").reset();
+    });
+  </script>
+</body>
+</html>

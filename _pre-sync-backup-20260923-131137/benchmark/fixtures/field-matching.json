@@ -1,0 +1,72 @@
+[
+  {
+    "id": "email-by-aria-label",
+    "element": { "type": "input:text", "ariaLabel": "Email Address" },
+    "expectedKey": "email"
+  },
+  {
+    "id": "email-by-html-type",
+    "element": { "type": "input:email" },
+    "expectedKey": "email"
+  },
+  {
+    "id": "pan-by-placeholder",
+    "element": { "type": "input:text", "placeholder": "Enter your PAN Card Number" },
+    "expectedKey": "pan"
+  },
+  {
+    "id": "aadhaar-by-label",
+    "element": { "type": "input:text", "ariaLabel": "Aadhaar Number" },
+    "expectedKey": "aadhaar"
+  },
+  {
+    "id": "emergency-phone-not-generic-phone",
+    "element": { "type": "input:tel", "ariaLabel": "Emergency Contact Number" },
+    "expectedKey": "emergency_phone",
+    "note": "Previously a documented limitation: fieldMatcher.js used to check HTML input type before label text, so a type=\"tel\" field short-circuited to the generic 'phone' key even when its label clearly said 'Emergency Contact'. Fixed this round by reordering matchElement() to try label-based exact/regex matches before falling back to the HTML-type check — this fixture is what proved the fix (it failed before the reorder, passes after)."
+  },
+  {
+    "id": "home-address-not-generic-address",
+    "element": { "type": "input:text", "ariaLabel": "Home Address" },
+    "expectedKey": "home_address"
+  },
+  {
+    "id": "dob-by-html-type-and-label",
+    "element": { "type": "input:date", "ariaLabel": "Date of Birth" },
+    "expectedKey": "dob"
+  },
+  {
+    "id": "company-by-label",
+    "element": { "type": "input:text", "ariaLabel": "Company Name" },
+    "expectedKey": "company"
+  },
+  {
+    "id": "password-excluded",
+    "element": { "type": "password", "ariaLabel": "Password" },
+    "expectedKey": null,
+    "note": "Password fields must never be auto-matchable, in any mode."
+  },
+  {
+    "id": "otp-excluded",
+    "element": { "type": "input:text", "ariaLabel": "One Time Password" },
+    "expectedKey": null,
+    "note": "OTP is explicitly excluded even though it superficially resembles a numeric identifier field."
+  },
+  {
+    "id": "search-excluded",
+    "element": { "type": "input:text", "ariaLabel": "Search products" },
+    "expectedKey": null,
+    "note": "Search boxes must never be treated as a private-data field."
+  },
+  {
+    "id": "captcha-excluded",
+    "element": { "type": "input:text", "ariaLabel": "Enter CAPTCHA code" },
+    "expectedKey": null
+  },
+  {
+    "id": "no-match-custom-field",
+    "element": { "type": "input:text", "ariaLabel": "Widget Configuration XYZ-9" },
+    "expectedKey": null,
+    "note": "Genuinely unrecognizable field — correct behavior is no match (which becomes an ask_user in the agent loop), not a wrong guess."
+  }
+]

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="lib/ort.wasm.min.js"></script>
+  <!-- Optional: vendor Tesseract.js locally per lib/tesseract/README.md to
+       enable OCR-confirmed ID-image redaction. Safe to leave missing —
+       offscreen.js fails closed and heuristic redaction still runs. -->
+  <script src="lib/tesseract/tesseract.min.js" onerror="console.warn('[offscreen] lib/tesseract/tesseract.min.js not found — OCR confirmation disabled, see lib/tesseract/README.md')"></script>
+  <script src="offscreen.js"></script>
+</head>
+<body></body>
+</html>

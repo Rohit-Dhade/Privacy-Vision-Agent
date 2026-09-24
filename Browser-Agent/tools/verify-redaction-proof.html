@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redaction Proof Verifier — Privacy-Vision-Agent</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    background: #0f1420;
+    color: #e7ecf5;
+    margin: 0;
+    padding: 32px 16px;
+  }
+  .container { max-width: 720px; margin: auto; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .subtitle { color: #93a1bd; font-size: 14px; margin-bottom: 24px; }
+  .card {
+    background: #171d2c;
+    border: 1px solid #2a3450;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 160px;
+    background: #0c101a;
+    color: #d9e2f5;
+    border: 1px solid #2a3450;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    resize: vertical;
+  }
+  input[type="file"] { margin-top: 6px; }
+  button {
+    margin-top: 14px;
+    background: #2f6fed;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button:disabled { background: #3a4560; cursor: not-allowed; }
+  button.secondary { background: #24304b; border: 1px solid #3a4a70; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tamper-note { color: #ffcf7a; font-size: 12px; margin-bottom: 10px; }
+  .result { margin-top: 18px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .badge-pass { background: #113a24; color: #5fe0a0; border: 1px solid #1f6b45; }
+  .badge-fail { background: #3a1414; color: #ff8a8a; border: 1px solid #6b1f1f; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #232b41; font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .row-label { color: #93a1bd; }
+  .row-val { font-weight: 700; }
+  .ok { color: #5fe0a0; }
+  .bad { color: #ff8a8a; }
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
+    gap: 3px;
+    margin-top: 10px;
+  }
+  .tile { width: 100%; aspect-ratio: 1; border-radius: 3px; }
+  .tile-ok { background: #1f6b45; }
+  .tile-bad { background: #6b1f1f; }
+  .hint { color: #6c7a99; font-size: 12px; line-height: 1.5; margin-top: 10px; }
+  .errlist { color: #ff8a8a; font-size: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔏 Redaction Proof Verifier</h1>
+  <p class="subtitle">
+    Independent, offline verification of a Privacy-Vision-Agent redaction proof.
+    This page needs no server, no extension, and no network connection — it only
+    needs the proof JSON. It never sees the original screenshot; it mathematically
+    confirms the proof's internal consistency using nothing but hashes and a
+    public key, both already embedded in the proof itself.
+  </p>
+
+  <div class="card">
+    <label for="proofInput">Paste the redaction proof JSON (or choose a .json file below)</label>
+    <textarea id="proofInput" placeholder='{"version":1,"algorithm":"SHA-256 Merkle tree + ECDSA-P256-SHA256", ...}'></textarea>
+    <input type="file" id="proofFile" accept="application/json,.json">
+    <br>
+    <div class="actions">
+      <button id="verifyBtn">Verify Proof</button>
+      <button id="loadLatestBtn" class="secondary" hidden>Load latest proof from the extension</button>
+      <button id="tamperBtn" class="secondary" disabled title="Verify a copy of this proof with one byte changed, to show that any edit is caught">Tamper test</button>
+    </div>
+    <p id="loadNote" class="hint"></p>
+  </div>
+
+  <div class="result" id="result" style="display:none;"></div>
+
+  <div class="hint">
+    <strong>What "valid" means here:</strong> every tile the extension claims was
+    redacted really was part of the single screenshot it originally committed to
+    (its Merkle inclusion proof recomputes to the signed root), and the whole
+    manifest is signed by the key embedded in the proof — so nothing in this JSON
+    was edited after the fact. <strong>What it does NOT mean:</strong> this does
+    not prove who ran the extension or that the key belongs to any particular
+    person/organization — the signing key is generated fresh per browsing
+    session specifically so this tool proves internal pipeline consistency, not
+    signer identity. It also does not reveal, and cannot reveal, what was in any
+    redacted region — SHA-256 hashes do not leak their input.
+  </div>
+</div>
+
+<!-- Scripts are EXTERNAL on purpose. This page is opened from the
+     extension (chrome-extension://.../tools/verify-redaction-proof.html),
+     where Manifest V3's Content Security Policy (script-src 'self')
+     silently blocks every inline <script>. The verifier logic used to be
+     inline, so the Verify button did nothing when opened from the
+     extension — see verify-redaction-proof.js's header. -->
+<script src="../utils/merkleProof.js"></script>
+<script src="verify-redaction-proof.js"></script>
+</body>
+</html>

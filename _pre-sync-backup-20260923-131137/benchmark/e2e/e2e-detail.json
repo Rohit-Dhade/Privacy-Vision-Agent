@@ -1,0 +1,98 @@
+{
+  "canvas": {
+    "w": 1288,
+    "h": 852
+  },
+  "mappedBoxes": 12,
+  "faceBoxAdded": true,
+  "faceRegionNonBlackBefore": 0.9990194705140776,
+  "boxesInBounds": true,
+  "proofMs": 52,
+  "proofValid": true,
+  "proofTiles": 36,
+  "tamperRejected": true,
+  "visionMs": 47,
+  "report": {
+    "analyzed": true,
+    "hasBlockingOverlay": false,
+    "overlayConfidence": "none",
+    "unpainted": 0,
+    "elementsChecked": 15
+  },
+  "icons": [
+    {
+      "id": 0,
+      "label": "menu",
+      "conf": 1
+    },
+    {
+      "id": 1,
+      "label": "search",
+      "conf": 1
+    },
+    {
+      "id": 2,
+      "label": "user",
+      "conf": 1
+    },
+    {
+      "id": 3,
+      "label": null,
+      "conf": null
+    },
+    {
+      "id": 4,
+      "label": "settings",
+      "conf": 0.93
+    },
+    {
+      "id": 5,
+      "label": "more",
+      "conf": 1
+    },
+    {
+      "id": 6,
+      "label": "close",
+      "conf": 1
+    },
+    {
+      "id": 9,
+      "label": "plus",
+      "conf": 1
+    },
+    {
+      "id": 10,
+      "label": "download",
+      "conf": 1
+    },
+    {
+      "id": 11,
+      "label": "heart",
+      "conf": 1
+    },
+    {
+      "id": 12,
+      "label": "play",
+      "conf": 1
+    },
+    {
+      "id": 13,
+      "label": "chevron_left",
+      "conf": 1
+    },
+    {
+      "id": 14,
+      "label": "chevron_right",
+      "conf": 1
+    }
+  ],
+  "boundary": {
+    "rogueStripped": true,
+    "rawSecretStripped": true,
+    "historyValueNeutralized": true,
+    "visualStateFiltered": true,
+    "scanPassed": true,
+    "blocksRawCard": true
+  },
+  "faceRegionNonBlackAfter": 0
+}

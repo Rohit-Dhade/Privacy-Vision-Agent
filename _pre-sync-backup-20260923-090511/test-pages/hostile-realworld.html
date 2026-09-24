@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hostile Fixture — real-world DOM hazards</title>
+<!--
+  ADVERSARIAL FIXTURE. Every well-behaved fixture in this repo tests that the
+  pipeline works. This one tests where it BREAKS, using the structures real
+  production websites actually use and our own demo page conspicuously does
+  not:
+
+    1. Open shadow DOM         — web components; document.querySelectorAll
+                                 does not pierce shadow roots at all
+    2. Nested shadow DOM       — design systems nest them several deep
+    3. Closed shadow DOM       — genuinely unreachable; documents the limit
+    4. Same-origin iframe      — Stripe/Razorpay-style payment fields, consent
+                                 walls. PII here appears in the screenshot but
+                                 is only detectable if a script runs in the frame
+    5. Canvas-rendered control — no DOM node exists for it at all
+    6. Virtualised list        — only a window of rows is in the DOM
+    7. SPA route change        — URL changes with no document load
+    8. Late-mounted content    — appears after first paint
+
+  Every sensitive value below is a checksum-valid test vector, matching the
+  main fixture:
+     Aadhaar 2345 6789 0124   Card 4111 1111 1111 1111
+     PAN     ABCPE1234F       IBAN DE89370400440532013000
+-->
+<style>
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+       background:#f6f7f9;color:#15181d}
+  main{max-width:900px;margin:0 auto;padding:20px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#5b6472;font-size:13.5px;margin:0 0 18px}
+  .case{background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .case h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#5b6472;margin:0 0 10px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;
+       background:#eef2fb;color:#1f52c8;margin-left:6px;vertical-align:1px}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 4px}
+  input{width:100%;max-width:320px;padding:8px 10px;border:1px solid #e3e6ea;border-radius:8px;font:inherit}
+  .val{font-variant-numeric:tabular-nums}
+  button{padding:8px 14px;border-radius:8px;border:1px solid #cfd6e4;background:#fff;font:inherit;cursor:pointer}
+  iframe{width:100%;max-width:420px;height:250px;border:1px solid #e3e6ea;border-radius:8px}
+  #vlist{height:120px;overflow:auto;border:1px solid #e3e6ea;border-radius:8px}
+  #vinner{position:relative}
+  .vrow{height:30px;padding:6px 10px;box-sizing:border-box;border-bottom:1px solid #f0f2f5;font-size:13px}
+  canvas{border:1px solid #e3e6ea;border-radius:8px;display:block}
+  code{background:#f2f4f7;padding:1px 5px;border-radius:4px;font-size:12.5px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Hostile fixture</h1>
+  <p class="sub">Real-world DOM structures that a naive <code>document.querySelectorAll</code>
+     traversal cannot see. Each case is labelled with what should be found.</p>
+
+  <!-- 1. OPEN SHADOW DOM -->
+  <section class="case">
+    <h2>1. Open shadow DOM <span class="tag">expect: 1 input + Aadhaar</span></h2>
+    <div id="host-open"></div>
+  </section>
+
+  <!-- 2. NESTED SHADOW DOM -->
+  <section class="case">
+    <h2>2. Nested shadow DOM, 3 deep <span class="tag">expect: 1 button + PAN</span></h2>
+    <div id="host-nested"></div>
+  </section>
+
+  <!-- 3. CLOSED SHADOW DOM -->
+  <section class="case">
+    <h2>3. Closed shadow DOM <span class="tag">expect: unreachable, by design</span></h2>
+    <div id="host-closed"></div>
+    <p class="sub" style="margin:8px 0 0">A closed root is not reachable from page script.
+       Anything inside it is invisible to extraction — and, importantly, its pixels are
+       still captured in the screenshot.</p>
+  </section>
+
+  <!-- 4. SAME-ORIGIN IFRAME -->
+  <section class="case">
+    <h2>4. Same-origin iframe <span class="tag">expect: card + input</span></h2>
+    <iframe id="pay-frame" src="hostile-iframe-payment.html" title="payment"></iframe>
+    <p class="sub" style="margin:8px 0 0">Payment fields live in iframes on most real
+       checkouts. The card number below is rendered into the screenshot whether or not
+       a content script runs in this frame.</p>
+  </section>
+
+  <!-- 5. CANVAS-RENDERED CONTROL -->
+  <section class="case">
+    <h2>5. Canvas-rendered button <span class="tag">expect: no DOM node exists</span></h2>
+    <canvas id="cv" width="300" height="64"></canvas>
+    <p class="sub" style="margin:8px 0 0">Drawn pixels only. There is nothing in the DOM to
+       find — this is precisely the case a screen-reading pass is for.</p>
+  </section>
+
+  <!-- 6. VIRTUALISED LIST -->
+  <section class="case">
+    <h2>6. Virtualised list <span class="tag">expect: only the visible window</span></h2>
+    <div id="vlist"><div id="vinner"></div></div>
+    <p class="sub" style="margin:8px 0 0">1,000 logical rows, ~6 in the DOM. Row 500 holds an
+       IBAN that is not present in the document until scrolled to.</p>
+  </section>
+
+  <!-- 7. SPA ROUTE CHANGE -->
+  <section class="case">
+    <h2>7. SPA route change <span class="tag">expect: URL changes, no page load</span></h2>
+    <button id="route-btn">Navigate (pushState)</button>
+    <span id="route-label" class="sub"> current: /hostile-realworld.html</span>
+  </section>
+
+  <!-- 8. LATE-MOUNTED CONTENT -->
+  <section class="case">
+    <h2>8. Late-mounted content <span class="tag">expect: appears after ~400ms</span></h2>
+    <div id="late"></div>
+  </section>
+</main>
+
+<script>
+// ── 1. Open shadow DOM ────────────────────────────────────────────────────
+const openHost = document.getElementById('host-open');
+const openRoot = openHost.attachShadow({ mode: 'open' });
+openRoot.innerHTML = `
+  <style>
+    label{display:block;font:600 13px system-ui;margin-bottom:4px}
+    input{padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:14px system-ui;width:300px}
+    p{font:13px system-ui;color:#333}
+  </style>
+  <label for="sd-aadhaar">Aadhaar Number</label>
+  <input id="sd-aadhaar" name="aadhaar" type="text" placeholder="1234 5678 9012">
+  <p>On file: <span class="val">2345 6789 0124</span></p>
+`;
+
+// ── 2. Nested shadow DOM, three levels deep ───────────────────────────────
+const nestedHost = document.getElementById('host-nested');
+const l1 = nestedHost.attachShadow({ mode: 'open' });
+const mid = document.createElement('div');
+l1.appendChild(mid);
+const l2 = mid.attachShadow({ mode: 'open' });
+const inner = document.createElement('div');
+l2.appendChild(inner);
+const l3 = inner.attachShadow({ mode: 'open' });
+l3.innerHTML = `
+  <style>
+    button{padding:8px 14px;border-radius:8px;border:1px solid #cfd6e4;background:#fff;font:14px system-ui;cursor:pointer}
+    p{font:13px system-ui;color:#333}
+  </style>
+  <button id="deep-btn">Verify PAN</button>
+  <p>PAN on record: <span class="val">ABCPE1234F</span></p>
+`;
+
+// ── 3. Closed shadow DOM ──────────────────────────────────────────────────
+const closedHost = document.getElementById('host-closed');
+const closedRoot = closedHost.attachShadow({ mode: 'closed' });
+closedRoot.innerHTML = `
+  <style>p{font:13px system-ui;color:#333}
+    input{padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:14px system-ui;width:300px}</style>
+  <p>Hidden account: <span>DE89370400440532013000</span></p>
+  <input id="closed-input" type="text" placeholder="unreachable field">
+`;
+
+// ── 5. Canvas-rendered control ────────────────────────────────────────────
+(function () {
+  const c = document.getElementById('cv');
+  const x = c.getContext('2d');
+  x.fillStyle = '#1f52c8'; x.fillRect(0, 0, 300, 64);
+  x.fillStyle = '#fff';
+  x.font = '600 16px system-ui, sans-serif';
+  x.textBaseline = 'middle';
+  x.fillText('Submit payment  (canvas only)', 18, 32);
+  x.strokeStyle = 'rgba(255,255,255,.55)';
+  x.lineWidth = 2;
+  x.strokeRect(8, 8, 284, 48);
+})();
+
+// ── 6. Virtualised list ───────────────────────────────────────────────────
+(function () {
+  const TOTAL = 1000, ROW = 30;
+  const list = document.getElementById('vlist');
+  const inner = document.getElementById('vinner');
+  inner.style.height = (TOTAL * ROW) + 'px';
+  function render() {
+    const start = Math.floor(list.scrollTop / ROW);
+    const count = Math.ceil(list.clientHeight / ROW) + 1;
+    let html = '';
+    for (let i = start; i < Math.min(TOTAL, start + count); i++) {
+      const text = i === 500 ? 'Row 500 — settlement IBAN DE89370400440532013000' : ('Row ' + i);
+      html += `<div class="vrow" style="position:absolute;top:${i * ROW}px;left:0;right:0">${text}</div>`;
+    }
+    inner.innerHTML = html;
+  }
+  list.addEventListener('scroll', render);
+  render();
+  window.__HOSTILE_scrollToRow = (n) => { list.scrollTop = n * ROW; render(); };
+})();
+
+// ── 7. SPA route change ───────────────────────────────────────────────────
+document.getElementById('route-btn').addEventListener('click', () => {
+  history.pushState({}, '', '/app/step-2?spa=1');
+  document.getElementById('route-label').textContent = ' current: ' + location.pathname + location.search;
+});
+
+// ── 8. Late-mounted content ───────────────────────────────────────────────
+setTimeout(() => {
+  document.getElementById('late').innerHTML =
+    '<label for="late-input">Late-mounted Email Address</label>' +
+    '<input id="late-input" name="email" type="email">' +
+    '<p class="sub" style="margin:6px 0 0">Mounted 400ms after first paint.</p>';
+}, 400);
+
+// Hooks for the test harness, so it never depends on clicking.
+window.__HOSTILE = {
+  routeChange() { document.getElementById('route-btn').click(); },
+  openShadowRoot: openRoot,
+  deepShadowRoot: l3
+};
+</script>
+</body>
+</html>

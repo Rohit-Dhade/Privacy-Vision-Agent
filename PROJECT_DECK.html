@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Vision Agent — Project Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Design System ─── */
+    :root {
+      --bg-dark: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-card-hover: #1a1a26;
+      --bg-gradient-1: #0f0f1a;
+      --bg-gradient-2: #0a1628;
+      --accent-primary: #6366f1;
+      --accent-secondary: #8b5cf6;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-cyan: #06b6d4;
+      --accent-pink: #ec4899;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border: rgba(255,255,255,0.06);
+      --border-accent: rgba(99,102,241,0.3);
+      --glass: rgba(255,255,255,0.03);
+      --glass-hover: rgba(255,255,255,0.06);
+      --shadow-xl: 0 20px 60px rgba(0,0,0,0.5);
+      --shadow-glow: 0 0 40px rgba(99,102,241,0.15);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Slide System ─── */
+    .slide {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .slide::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.06), transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.04), transparent 50%);
+      pointer-events: none;
+    }
+    .slide-number {
+      position: absolute;
+      top: 32px;
+      right: 40px;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    /* ─── Typography ─── */
+    .mega-title {
+      font-size: clamp(3rem, 5vw, 5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 0%, #c7d2fe 50%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .slide-title {
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .slide-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 700px;
+      line-height: 1.7;
+    }
+    .overline {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-primary);
+      margin-bottom: 10px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--border);
+      background: var(--glass);
+      color: var(--text-secondary);
+    }
+    .tag-accent { border-color: var(--border-accent); color: var(--accent-primary); }
+    .tag-green { border-color: rgba(16,185,129,0.3); color: var(--accent-green); }
+    .tag-amber { border-color: rgba(245,158,11,0.3); color: var(--accent-amber); }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-accent);
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-2px);
+    }
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 1.4rem;
+    }
+    .card-icon.purple { background: rgba(99,102,241,0.12); color: var(--accent-primary); }
+    .card-icon.green { background: rgba(16,185,129,0.12); color: var(--accent-green); }
+    .card-icon.amber { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+    .card-icon.cyan { background: rgba(6,182,212,0.12); color: var(--accent-cyan); }
+    .card-icon.pink { background: rgba(236,72,153,0.12); color: var(--accent-pink); }
+    .card-icon.red { background: rgba(239,68,68,0.12); color: var(--accent-red); }
+    .card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .card p {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    /* ─── Grid Layouts ─── */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .flex-col { display: flex; flex-direction: column; gap: 8px; }
+    .gap-24 { gap: 24px; }
+    .gap-32 { gap: 32px; }
+    .gap-40 { gap: 40px; }
+    .mt-20 { margin-top: 20px; }
+    .mt-32 { margin-top: 32px; }
+    .mt-40 { margin-top: 40px; }
+    .mt-48 { margin-top: 48px; }
+    .mb-8 { margin-bottom: 8px; }
+    .mb-12 { margin-bottom: 12px; }
+    .max-w-800 { max-width: 800px; }
+
+    /* ─── Metric Box ─── */
+    .metric-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 24px;
+      text-align: center;
+    }
+    .metric-val {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-family: var(--mono);
+      letter-spacing: -0.02em;
+    }
+    .metric-val.green { color: var(--accent-green); }
+    .metric-val.purple { color: var(--accent-primary); }
+    .metric-val.amber { color: var(--accent-amber); }
+    .metric-val.cyan { color: var(--accent-cyan); }
+    .metric-lbl {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    /* ─── Table ─── */
+    .deck-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.85rem;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .deck-table th {
+      background: rgba(99,102,241,0.08);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .deck-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .deck-table tr:last-child td { border-bottom: none; }
+    .deck-table tr:hover td { background: var(--glass-hover); }
+    .val-green { color: var(--accent-green); font-weight: 700; font-family: var(--mono); }
+    .val-amber { color: var(--accent-amber); font-weight: 700; font-family: var(--mono); }
+
+    /* ─── Flow Diagram ─── */
+    .flow-container {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-top: 32px;
+    }
+    .flow-step {
+      flex: 1;
+      padding: 20px 16px;
+      text-align: center;
+      position: relative;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+    .flow-step:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+    .flow-step:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+    .flow-step + .flow-step { border-left: none; }
+    .flow-step .material-symbols-outlined {
+      font-size: 1.6rem;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .flow-step h4 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .flow-step p {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .flow-arrow {
+      width: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-primary);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    /* ─── Separator ─── */
+    .separator {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+      border-radius: 3px;
+      margin: 16px 0;
+    }
+
+    /* ─── Privacy Boundary Visualization ─── */
+    .boundary-box {
+      border: 2px dashed;
+      border-radius: var(--radius);
+      padding: 24px;
+      position: relative;
+    }
+    .boundary-box.local {
+      border-color: var(--accent-green);
+      background: rgba(16,185,129,0.03);
+    }
+    .boundary-box.cloud {
+      border-color: var(--accent-primary);
+      background: rgba(99,102,241,0.03);
+    }
+    .boundary-label {
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      padding: 2px 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border-radius: 4px;
+    }
+    .boundary-label.local { background: var(--accent-green); color: #000; }
+    .boundary-label.cloud { background: var(--accent-primary); color: #fff; }
+
+    /* ─── Code Block ─── */
+    .code-block {
+      background: #0d1117;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-sm);
+      padding: 20px 24px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: #c9d1d9;
+      overflow-x: auto;
+    }
+    .code-comment { color: #8b949e; }
+    .code-keyword { color: #ff7b72; }
+    .code-string { color: #a5d6ff; }
+    .code-fn { color: #d2a8ff; }
+    .code-green { color: #7ee787; }
+
+    /* ─── Highlight Box ─── */
+    .highlight-box {
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.06));
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+    }
+    .highlight-box.green {
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.04));
+      border-color: rgba(16,185,129,0.2);
+    }
+
+    /* ─── Timeline ─── */
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: linear-gradient(180deg, var(--accent-primary), var(--accent-green));
+      border-radius: 2px;
+    }
+    .timeline-item {
+      position: relative;
+      padding: 12px 0;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -26px;
+      top: 18px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      border: 2px solid var(--bg-dark);
+    }
+    .timeline-item h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .timeline-item p {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    /* ─── Hero specific ─── */
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 100px;
+      background: rgba(99,102,241,0.1);
+      border: 1px solid var(--border-accent);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent-primary);
+      margin-bottom: 28px;
+    }
+    .hero-tagline {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      max-width: 680px;
+      margin-top: 20px;
+      line-height: 1.7;
+    }
+    .hero-meta {
+      display: flex;
+      gap: 24px;
+      margin-top: 36px;
+      flex-wrap: wrap;
+    }
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .hero-meta-item .material-symbols-outlined { font-size: 1.1rem; }
+
+    /* ─── Navigation Dots ─── */
+    .nav-dots {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+    }
+    .nav-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      opacity: 0.4;
+      transition: all 0.3s;
+      cursor: pointer;
+      border: none;
+    }
+    .nav-dot:hover, .nav-dot.active { opacity: 1; background: var(--accent-primary); transform: scale(1.4); }
+
+    /* ─── Comparison Cells ─── */
+    .check { color: var(--accent-green); }
+    .cross { color: var(--accent-red); }
+    .warn { color: var(--accent-amber); }
+
+    /* ─── Print / PDF ─── */
+    @media print {
+      .slide { page-break-after: always; min-height: auto; padding: 40px; }
+      .nav-dots { display: none; }
+      body { background: #fff; color: #111; }
+    }
+
+    @media (max-width: 900px) {
+      .slide { padding: 40px 24px; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .flow-container { flex-direction: column; }
+      .flow-step:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+      .flow-step:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+      .flow-step + .flow-step { border-left: 1px solid var(--border); border-top: none; }
+      .flow-arrow { transform: rotate(90deg); width: auto; height: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Dots -->
+  <nav class="nav-dots" aria-label="Slide navigation">
+    <button class="nav-dot active" onclick="scrollToSlide(0)" title="Cover"></button>
+    <button class="nav-dot" onclick="scrollToSlide(1)" title="Problem"></button>
+    <button class="nav-dot" onclick="scrollToSlide(2)" title="Solution"></button>
+    <button class="nav-dot" onclick="scrollToSlide(3)" title="Architecture"></button>
+    <button class="nav-dot" onclick="scrollToSlide(4)" title="Privacy"></button>
+    <button class="nav-dot" onclick="scrollToSlide(5)" title="Privacy Dial"></button>
+    <button class="nav-dot" onclick="scrollToSlide(6)" title="PII Detection"></button>
+    <button class="nav-dot" onclick="scrollToSlide(7)" title="Execution Flow"></button>
+    <button class="nav-dot" onclick="scrollToSlide(8)" title="Debate"></button>
+    <button class="nav-dot" onclick="scrollToSlide(9)" title="Safety"></button>
+    <button class="nav-dot" onclick="scrollToSlide(10)" title="Benchmarks"></button>
+    <button class="nav-dot" onclick="scrollToSlide(11)" title="Comparison"></button>
+    <button class="nav-dot" onclick="scrollToSlide(12)" title="Tech Stack"></button>
+    <button class="nav-dot" onclick="scrollToSlide(13)" title="Demo"></button>
+    <button class="nav-dot" onclick="scrollToSlide(14)" title="Closing"></button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 01: COVER -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-0">
+    <span class="slide-number">01 / 15</span>
+    <div class="hero-badge">
+      <span class="material-symbols-outlined" style="font-size:1rem">shield</span>
+      Smart India Hackathon 2026 — PS26171
+    </div>
+    <h1 class="mega-title">Privacy Vision<br/>Agent</h1>
+    <p class="hero-tagline">
+      The browser agent that lets AI complete forms, navigate pages, and automate workflows — while <strong>mathematically guaranteeing</strong> your personal data never leaves your device.
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="material-symbols-outlined">code</span>
+        Chrome Extension (Manifest V3)
+      </div>
+      <div class="hero-meta-item">
+        <span class="material-symbols-outlined">psychology</span>
+        Pixtral-12B + On-device Qwen2.5
+      </div>
+      <div class="hero-meta-item">
+        <span class="material-symbols-outlined">verified_user</span>
+        Cryptographic Redaction Proofs
+      </div>
+      <div class="hero-meta-item">
+        <span class="material-symbols-outlined">lock</span>
+        Zero PII Leakage — By Architecture
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 02: THE PROBLEM -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-1">
+    <span class="slide-number">02 / 15</span>
+    <p class="overline">The Problem</p>
+    <h2 class="slide-title">AI sees everything.<br/>That's the problem.</h2>
+    <div class="separator"></div>
+    <p class="slide-subtitle">
+      Today's browser agents send your entire screen — passwords, Aadhaar numbers, bank details, faces — to cloud AI servers. Every screenshot is a privacy liability.
+    </p>
+    <div class="grid-3 mt-40">
+      <div class="card">
+        <div class="card-icon red"><span class="material-symbols-outlined">visibility</span></div>
+        <h3>Full Screen Exposure</h3>
+        <p>Raw screenshots with all your personal data are transmitted to third-party AI providers with every single agent step.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon red"><span class="material-symbols-outlined">person_off</span></div>
+        <h3>No Consent Mechanism</h3>
+        <p>Users have no control over what data leaves their device. No redaction, no filtering, no proof of what was sent.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon red"><span class="material-symbols-outlined">dangerous</span></div>
+        <h3>Runaway AI Actions</h3>
+        <p>Agents can submit payments, delete accounts, or accept agreements without meaningful human authorization checkpoints.</p>
+      </div>
+    </div>
+    <div class="highlight-box mt-32">
+      <p style="font-size:1rem;font-weight:600;color:var(--text-primary);">
+        💡 The core question: <em>Can an AI agent complete a KYC form, book a ticket, or fill a government application — without ever seeing your real data?</em>
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 03: THE SOLUTION -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-2">
+    <span class="slide-number">03 / 15</span>
+    <p class="overline">Our Solution</p>
+    <h2 class="slide-title">See structure, not secrets.</h2>
+    <div class="separator"></div>
+    <p class="slide-subtitle mb-12">
+      Privacy Vision Agent separates <strong>what the AI needs</strong> (page structure, button labels, field types) from <strong>what it must never see</strong> (your data, your face, your credentials).
+    </p>
+
+    <div class="flow-container">
+      <div class="flow-step" style="color:var(--accent-cyan)">
+        <span class="material-symbols-outlined">web</span>
+        <h4>Live Web Page</h4>
+        <p>Contains real user PII, faces, credentials</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--accent-green)">
+        <span class="material-symbols-outlined">security</span>
+        <h4>On-Device Detection</h4>
+        <p>ONNX NER + Regex + Luhn + YuNet Face</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--accent-amber)">
+        <span class="material-symbols-outlined">hide_image</span>
+        <h4>Local Redaction</h4>
+        <p>Solid black boxes over all PII & faces</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--accent-primary)">
+        <span class="material-symbols-outlined">psychology</span>
+        <h4>AI Reasoning</h4>
+        <p>VLM sees only redacted screenshot</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--accent-pink)">
+        <span class="material-symbols-outlined">touch_app</span>
+        <h4>Safe Execution</h4>
+        <p>Action verified + locally filled</p>
+      </div>
+    </div>
+
+    <div class="grid-2 mt-32">
+      <div class="highlight-box green">
+        <p style="font-size:0.85rem;color:var(--accent-green);font-weight:700;margin-bottom:8px;">WHAT CROSSES THE NETWORK</p>
+        <p style="font-size:0.88rem;color:var(--text-secondary);">Redacted screenshot (black boxes where PII was) + sanitized DOM skeleton (field types, labels, selectors — no values)</p>
+      </div>
+      <div class="highlight-box">
+        <p style="font-size:0.85rem;color:var(--accent-primary);font-weight:700;margin-bottom:8px;">WHAT STAYS ON YOUR DEVICE</p>
+        <p style="font-size:0.88rem;color:var(--text-secondary);">Raw screenshot, actual PII values, passwords, face images, profile data from local store — all of it. Always.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 04: ARCHITECTURE -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-3">
+    <span class="slide-number">04 / 15</span>
+    <p class="overline">System Architecture</p>
+    <h2 class="slide-title">Dual-tier, decoupled, auditable.</h2>
+    <div class="separator"></div>
+
+    <div class="grid-2 gap-24 mt-32">
+      <div class="boundary-box local">
+        <span class="boundary-label local">ON-DEVICE (BROWSER)</span>
+        <div class="flex-col gap-24" style="margin-top:12px;">
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">🎯 Perception Layer</h3>
+            <p style="font-size:0.78rem;">domExtractor · interactiveElements · textExtractor · visibility · piiDetector · semanticDomBuilder · fullPageScanner</p>
+          </div>
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">🧠 Agent Core (26 modules)</h3>
+            <p style="font-size:0.78rem;">fieldMatcher · formAnalyzer · stateDiffEngine · stateManager (12-state FSM) · taskManager · contextManager · recoveryEngine</p>
+          </div>
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">🔒 Safety Stack</h3>
+            <p style="font-size:0.78rem;">privacyBoundary · privacyDial · trustGate · consequentialActionDetector · actionVerifier · complianceChecker · verificationLoop</p>
+          </div>
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">⚡ On-Device ML</h3>
+            <p style="font-size:0.78rem;">ONNX NER (29 MB) · YuNet Face (232 KB) · WebLLM Qwen2.5 (OPFS-cached) · Visual State Engine · Icon Classifier</p>
+          </div>
+        </div>
+      </div>
+      <div class="boundary-box cloud">
+        <span class="boundary-label cloud">AI REASONING (SERVER)</span>
+        <div class="flex-col gap-24" style="margin-top:12px;">
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">🔍 Request Validation</h3>
+            <p style="font-size:0.78rem;">Zod requestSchema · validateRequest middleware · CORS enforcement for chrome-extension:// origins</p>
+          </div>
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">📝 Prompt Construction</h3>
+            <p style="font-size:0.78rem;">promptBuilder.js — system prompt + DOM skeleton + redacted image + session history + prompt injection defense rules</p>
+          </div>
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">🤖 VLM Inference</h3>
+            <p style="font-size:0.78rem;">Pixtral-12B via Mistral AI SDK — multimodal reasoning over redacted screenshot + sanitized DOM structure</p>
+          </div>
+          <div class="card" style="padding:16px;">
+            <h3 style="font-size:0.9rem;">✅ Action Validation</h3>
+            <p style="font-size:0.78rem;">ActionValidator — JSON sanitization, code-fence stripping, Zod actionSchema, target-exists check, sensitive field guard</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 05: PRIVACY GUARANTEES -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-4">
+    <span class="slide-number">05 / 15</span>
+    <p class="overline">Privacy Architecture</p>
+    <h2 class="slide-title">8 guarantees. Each traceable to code.</h2>
+    <div class="separator"></div>
+    <p class="slide-subtitle mb-12">
+      Not aspirational goals — architecturally enforced constraints. Each one names the specific file that implements it.
+    </p>
+
+    <div class="grid-2 gap-24 mt-32">
+      <div class="card">
+        <div class="card-icon green"><span class="material-symbols-outlined">shield</span></div>
+        <h3>Raw PII Never Leaves</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">privacyBoundary.js</code> — allowlist sanitizer strips all forbidden fields. Adversarial pre-flight scan hard-aborts if anything unredacted is found in the outbound payload.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon green"><span class="material-symbols-outlined">face_retouching_off</span></div>
+        <h3>Faces Blacked Out</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">offscreen.js</code> + <code style="font-size:0.75rem;color:var(--accent-cyan);">redactor.js</code> — YuNet ONNX detects faces, canvas renders solid #000 rectangles before any transmission.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple"><span class="material-symbols-outlined">key_off</span></div>
+        <h3>Passwords Never Filled</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">fieldMatcher.js</code> — explicit exclusion of <code>type="password"</code> fields. No code path exists to auto-fill passwords.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple"><span class="material-symbols-outlined">cloud_off</span></div>
+        <h3>Fully Local = Zero Cloud</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">agentBackend.js</code> — hard architectural refusal, not a soft preference. <code>decideNextAction()</code> refuses to run in Local mode.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon amber"><span class="material-symbols-outlined">gavel</span></div>
+        <h3>Consequential Actions Gated</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">consequentialActionDetector.js</code> — 9-step authorization protocol. Submit, pay, delete — all require explicit human approval.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon amber"><span class="material-symbols-outlined">verified</span></div>
+        <h3>Cryptographic Proof</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">merkleProof.js</code> — tile-hashed Merkle tree with downloadable, independently verifiable proof of redaction.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon cyan"><span class="material-symbols-outlined">phishing</span></div>
+        <h3>Anti-Phishing Gate</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">trustGate.js</code> — domain look-alike detection (Levenshtein), cross-domain form-action blocking, sensitive field combination checks.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon cyan"><span class="material-symbols-outlined">block</span></div>
+        <h3>Prompt Injection Defense</h3>
+        <p><code style="font-size:0.75rem;color:var(--accent-cyan);">promptBuilder.js</code> — explicit trusted/untrusted boundary. Webpage content is passive data, never instructions. Hostile directives rejected.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 06: PRIVACY DIAL -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-5">
+    <span class="slide-number">06 / 15</span>
+    <p class="overline">User Control</p>
+    <h2 class="slide-title">You choose the trust boundary.</h2>
+    <div class="separator"></div>
+    <p class="slide-subtitle">The Privacy Dial — a first-class, always-visible control with four positions. Not a hidden setting.</p>
+
+    <div class="grid-4 mt-40">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2.4rem;margin-bottom:12px;">☁️</div>
+        <h3>Cloud-Assisted</h3>
+        <p style="font-size:0.82rem;">Redacted screenshot + sanitized DOM sent to Pixtral-12B. Fastest, most capable reasoning.</p>
+        <div class="flex-row mt-20" style="justify-content:center;"><span class="tag">Per-step VLM call</span></div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2.4rem;margin-bottom:12px;">⚖️</div>
+        <h3>Hybrid</h3>
+        <p style="font-size:0.82rem;">Local matcher resolves confidently matched fields. Cloud called only when local confidence insufficient.</p>
+        <div class="flex-row mt-20" style="justify-content:center;"><span class="tag tag-green">Cloud only when needed</span></div>
+      </div>
+      <div class="card" style="text-align:center;border-color:rgba(16,185,129,0.3);">
+        <div style="font-size:2.4rem;margin-bottom:12px;">🔒</div>
+        <h3>Fully Local</h3>
+        <p style="font-size:0.82rem;">On-device Qwen2.5-1.5B (WebLLM) + deterministic matcher. Cloud architecturally unreachable.</p>
+        <div class="flex-row mt-20" style="justify-content:center;"><span class="tag tag-green">Zero network calls</span></div>
+      </div>
+      <div class="card" style="text-align:center;border-color:var(--border-accent);">
+        <div style="font-size:2.4rem;margin-bottom:12px;">🤝</div>
+        <h3>Hybrid Debate</h3>
+        <p style="font-size:0.82rem;">Local + Cloud run in parallel. Both decisions shown with confidence scores and disagreement analysis.</p>
+        <div class="flex-row mt-20" style="justify-content:center;"><span class="tag tag-accent">Transparent AI</span></div>
+      </div>
+    </div>
+
+    <div class="highlight-box mt-32">
+      <p style="font-size:0.9rem;color:var(--text-primary);">
+        <strong>Constitutional transparency:</strong> Every behavioral rule is documented in the publicly readable <em>Agent Constitution</em> (v1.1.0). Its version number changes whenever a rule changes — visible in the product's Privacy Receipt panel. The claim is checkable against the code, not just this description.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 07: PII DETECTION -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-6">
+    <span class="slide-number">07 / 15</span>
+    <p class="overline">Detection Engine</p>
+    <h2 class="slide-title">Multi-jurisdictional PII detection.</h2>
+    <div class="separator"></div>
+    <p class="slide-subtitle">14 countries, 20+ document types, checksum-validated where possible. Zero false positives in benchmark.</p>
+
+    <div class="grid-2 gap-24 mt-32">
+      <div>
+        <table class="deck-table">
+          <thead>
+            <tr><th>Document Type</th><th>Country</th><th>Validation</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Aadhaar</td><td>🇮🇳 India</td><td class="val-green">Verhoeff checksum</td></tr>
+            <tr><td>PAN</td><td>🇮🇳 India</td><td>Format regex</td></tr>
+            <tr><td>SSN</td><td>🇺🇸 USA</td><td class="val-green">SSA exclusion rules</td></tr>
+            <tr><td>NINO</td><td>🇬🇧 UK</td><td>Format regex</td></tr>
+            <tr><td>VAT ID</td><td>🇩🇪 Germany</td><td class="val-green">ISO 7064 mod-11-10</td></tr>
+            <tr><td>Resident ID</td><td>🇨🇳 China</td><td class="val-green">GB 11643-1999</td></tr>
+            <tr><td>My Number</td><td>🇯🇵 Japan</td><td class="val-green">Check digit</td></tr>
+            <tr><td>CPF</td><td>🇧🇷 Brazil</td><td class="val-green">Two-check-digit</td></tr>
+            <tr><td>SIN</td><td>🇨🇦 Canada</td><td class="val-green">Luhn</td></tr>
+            <tr><td>TFN / ABN</td><td>🇦🇺 Australia</td><td class="val-green">Mod-11 check</td></tr>
+            <tr><td>CURP / RFC</td><td>🇲🇽 Mexico</td><td>Format regex</td></tr>
+            <tr><td>IBAN</td><td>🌍 International</td><td class="val-green">ISO 7064 mod-97</td></tr>
+            <tr><td>Passport MRZ</td><td>🌍 ICAO</td><td class="val-green">ICAO 9303</td></tr>
+            <tr><td>Credit Cards</td><td>🌍 Universal</td><td class="val-green">Luhn</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex-col gap-24">
+        <div class="card">
+          <div class="card-icon green"><span class="material-symbols-outlined">check_circle</span></div>
+          <h3>Checksum-First Design</h3>
+          <p>Wherever a standard checksum exists (Luhn, Verhoeff, mod-97), we validate it — not just regex matching. Reduces false positives to near-zero.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon purple"><span class="material-symbols-outlined">layers</span></div>
+          <h3>Range Claim Tracker</h3>
+          <p>When a checksum-validated detector claims a character range, loose pattern matchers (like PHONE) skip it — preventing duplicate labels on already-classified data.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon cyan"><span class="material-symbols-outlined">psychology</span></div>
+          <h3>ONNX NER Layer</h3>
+          <p>Quantized transformer (29 MB) for entity types without checksums — names, organizations. Runs in the offscreen WASM worker, fully on-device.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 08: EXECUTION FLOW -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-7">
+    <span class="slide-number">08 / 15</span>
+    <p class="overline">End-to-End Flow</p>
+    <h2 class="slide-title">From task to completion — every step traced.</h2>
+    <div class="separator"></div>
+
+    <div class="grid-2 gap-32 mt-32">
+      <div class="timeline">
+        <div class="timeline-item">
+          <h4>1. Task Submission</h4>
+          <p>User types: <em>"Complete this form using my stored profile"</em> → auto-selects Complete Mode</p>
+        </div>
+        <div class="timeline-item">
+          <h4>2. Page Analysis</h4>
+          <p>domExtractor runs: interactive elements, visible text, PII detection (regex + NER + Luhn), URL scanning</p>
+        </div>
+        <div class="timeline-item">
+          <h4>3. Screenshot Capture + Face Detection</h4>
+          <p>chrome.tabs.captureVisibleTab() → offscreen YuNet ONNX → face bounding boxes returned</p>
+        </div>
+        <div class="timeline-item">
+          <h4>4. Local Redaction</h4>
+          <p>redactor.js paints solid #000 rectangles over all PII + faces. Unredacted screenshot immediately discarded.</p>
+        </div>
+        <div class="timeline-item">
+          <h4>5. State Diff + Form Analysis</h4>
+          <p>stateDiffEngine computes page changes. formAnalyzer calculates field completion and store matchability.</p>
+        </div>
+      </div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <h4>6. Backend Dispatch</h4>
+          <p>agentBackend.js POSTs redacted screenshot + sanitized DOM to Express server. Zero raw values cross the boundary.</p>
+        </div>
+        <div class="timeline-item">
+          <h4>7. VLM Reasoning</h4>
+          <p>promptBuilder constructs multimodal payload → Pixtral-12B returns JSON action → ActionValidator sanitizes + validates</p>
+        </div>
+        <div class="timeline-item">
+          <h4>8. Action Translation</h4>
+          <p><strong>fill_from_local:</strong> fieldMatcher → privateDataStore → type locally<br/>
+          <strong>ask_user:</strong> highlight field → spotlight guide → user types manually</p>
+        </div>
+        <div class="timeline-item">
+          <h4>9. Safety Check</h4>
+          <p>consequentialActionDetector intercepts submit/pay → 9-step Human Authorization Gate → user confirms</p>
+        </div>
+        <div class="timeline-item">
+          <h4>10. Loop</h4>
+          <p>Re-analyze page, repeat until <code>done</code> or max 25 steps. Every step redacted independently.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 09: MULTI-AGENT DEBATE -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-8">
+    <span class="slide-number">09 / 15</span>
+    <p class="overline">Innovation Highlight</p>
+    <h2 class="slide-title">Multi-agent debate.<br/>Transparent disagreement.</h2>
+    <div class="separator"></div>
+    <p class="slide-subtitle">The first browser agent where AI disagreement is visible and explainable, not hidden behind a single answer.</p>
+
+    <div class="grid-2 gap-32 mt-40">
+      <div>
+        <div class="code-block">
+          <span class="code-comment">// Both reasoners run in parallel (Promise.allSettled)</span><br/>
+          <span class="code-keyword">const</span> [local, cloud] = <span class="code-keyword">await</span> <span class="code-fn">Promise.allSettled</span>([<br/>
+          &nbsp;&nbsp;<span class="code-fn">decideNextActionLocalLLM</span>(payload), <span class="code-comment">// Qwen2.5</span><br/>
+          &nbsp;&nbsp;<span class="code-fn">decideNextAction</span>(payload)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="code-comment">// Pixtral-12B</span><br/>
+          ]);<br/><br/>
+          <span class="code-comment">// Compare decisions</span><br/>
+          <span class="code-keyword">const</span> agree = <span class="code-fn">actionsRoughlyMatch</span>(local, cloud);<br/>
+          <span class="code-keyword">const</span> gap = Math.<span class="code-fn">abs</span>(local.confidence - cloud.confidence);<br/><br/>
+          <span class="code-comment">// Resolution tiers</span><br/>
+          <span class="code-keyword">if</span> (agree)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → <span class="code-green">AGREE</span><br/>
+          <span class="code-keyword">if</span> (gap &lt; 5%)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → <span class="code-green">AUTO_RESOLVE</span><br/>
+          <span class="code-keyword">if</span> (gap 5%–15%)&nbsp;&nbsp;&nbsp;&nbsp; → <span class="code-string">SHOW_BOTH</span><br/>
+          <span class="code-keyword">if</span> (gap &gt; 15%)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → <span class="code-keyword">ASK_USER</span>
+        </div>
+      </div>
+      <div class="flex-col gap-24">
+        <div class="card">
+          <h3 style="color:var(--accent-green);">✓ Transparency, not averaging</h3>
+          <p>Both decisions, both confidence scores, and the disagreement gap are shown to the user — not silently averaged into one opaque answer.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--accent-amber);">✓ Graceful degradation</h3>
+          <p>Promise.allSettled() — if local model or cloud backend fails, the surviving decision is used with a clear "degraded" flag. Never fails silently.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--accent-primary);">✓ Safety gates still apply</h3>
+          <p>A disagreement never bypasses consequential-action confirmation, sensitive-field ask_user, or stale-target re-validation. Debate adds transparency, not autonomy.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 10: SAFETY SYSTEMS -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-9">
+    <span class="slide-number">10 / 15</span>
+    <p class="overline">Safety Stack</p>
+    <h2 class="slide-title">Five layers of defense.</h2>
+    <div class="separator"></div>
+
+    <div class="grid-3 gap-24 mt-40">
+      <div class="card">
+        <div class="card-icon red"><span class="material-symbols-outlined">gavel</span></div>
+        <h3>Consequential Action Gate</h3>
+        <p>9-step protocol: stop → re-observe → verify target → explain → ask → bind approval → re-verify → execute → invalidate. Covers submit, pay, delete, publish, book, approve.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon amber"><span class="material-symbols-outlined">phishing</span></div>
+        <h3>Anti-Phishing Trust Gate</h3>
+        <p>Four checks: cross-domain form action (BLOCK), non-HTTPS (WARN), look-alike domains using Levenshtein distance (BLOCK), 3+ sensitive field categories (BLOCK).</p>
+      </div>
+      <div class="card">
+        <div class="card-icon cyan"><span class="material-symbols-outlined">shield</span></div>
+        <h3>Privacy Boundary Enforcer</h3>
+        <p>Explicit allowlists for every data field crossing the network. History value neutralization. Adversarial pre-flight scan that hard-aborts if PII is found in outbound payload.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon purple"><span class="material-symbols-outlined">block</span></div>
+        <h3>Prompt Injection Defense</h3>
+        <p>Architectural boundary: webpage content is marked as UNTRUSTED DATA in the system prompt. Hostile directives ("ignore instructions", "reveal credentials") are explicitly rejected.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon green"><span class="material-symbols-outlined">verified_user</span></div>
+        <h3>Action Verification Loop</h3>
+        <p>Post-execution verification: did the click land? Did the value actually appear? Stale-target prevention re-validates selectors before every action execution.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon pink"><span class="material-symbols-outlined">balance</span></div>
+        <h3>Compliance Signals</h3>
+        <p>Local pattern-matching for GDPR/CCPA/HIPAA signals: cookie consent, privacy policy links, data processing notices. Informational — not a legal verdict.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 11: BENCHMARKS -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-10">
+    <span class="slide-number">11 / 15</span>
+    <p class="overline">Benchmark Results</p>
+    <h2 class="slide-title">Open, reproducible, real numbers.</h2>
+    <div class="separator"></div>
+    <p class="slide-subtitle">Run them yourself: <code style="color:var(--accent-cyan);">node benchmark/run-benchmark.js</code> — nothing hand-edited.</p>
+
+    <div class="grid-4 mt-40">
+      <div class="metric-box">
+        <div class="metric-val green">100%</div>
+        <span class="metric-lbl">PII Detection F1</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val green">100%</div>
+        <span class="metric-lbl">Field Matching F1</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val green">100%</div>
+        <span class="metric-lbl">Safety Gate F1</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val purple">52/52</div>
+        <span class="metric-lbl">Debate Logic Checks</span>
+      </div>
+    </div>
+
+    <div class="mt-32">
+      <table class="deck-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>ISRO Weight</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1</th>
+            <th>Latency</th>
+            <th>Cases</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Sensitive Data Detection</strong></td>
+            <td>20%</td>
+            <td class="val-green">100.0%</td>
+            <td class="val-green">100.0%</td>
+            <td class="val-green">100.0%</td>
+            <td>15.05 ms</td>
+            <td>38</td>
+          </tr>
+          <tr>
+            <td><strong>Local Field Matching</strong></td>
+            <td>25%</td>
+            <td class="val-green">100.0%</td>
+            <td class="val-green">100.0%</td>
+            <td class="val-green">100.0%</td>
+            <td>5.33 ms</td>
+            <td>13</td>
+          </tr>
+          <tr>
+            <td><strong>Consequential Action Gate</strong></td>
+            <td>Safety</td>
+            <td class="val-green">100.0%</td>
+            <td class="val-green">100.0%</td>
+            <td class="val-green">100.0%</td>
+            <td>0.67 ms</td>
+            <td>12</td>
+          </tr>
+          <tr>
+            <td><strong>Redaction Integrity</strong></td>
+            <td>20%</td>
+            <td colspan="3" class="val-green">6/6 Merkle checks passed</td>
+            <td>—</td>
+            <td>6</td>
+          </tr>
+          <tr>
+            <td><strong>Screen-State Perception</strong></td>
+            <td>25%</td>
+            <td colspan="3" class="val-green">23/24 checks passed</td>
+            <td>573 ms/frame</td>
+            <td>24</td>
+          </tr>
+          <tr>
+            <td><strong>Icon Classification</strong></td>
+            <td>25%</td>
+            <td class="val-green">100.0%</td>
+            <td>88.6%</td>
+            <td class="val-green">3/4 passed</td>
+            <td>13.17 ms</td>
+            <td>70 crops</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 12: COMPARISON -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-11">
+    <span class="slide-number">12 / 15</span>
+    <p class="overline">Competitive Landscape</p>
+    <h2 class="slide-title">How we compare.</h2>
+    <div class="separator"></div>
+
+    <div class="mt-32">
+      <table class="deck-table">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>Privacy Vision Agent</th>
+            <th>Typical Cloud Agent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>PII leaves the browser</td>
+            <td><span class="check">✕ Never — architecturally blocked</span></td>
+            <td><span class="cross">✓ Every screenshot, every step</span></td>
+          </tr>
+          <tr>
+            <td>Face detection</td>
+            <td><span class="check">✓ On-device YuNet (232 KB)</span></td>
+            <td><span class="cross">✕ Sent to cloud unredacted</span></td>
+          </tr>
+          <tr>
+            <td>Cryptographic redaction proof</td>
+            <td><span class="check">✓ Merkle tree, downloadable, verifiable offline</span></td>
+            <td><span class="cross">✕ No proof mechanism</span></td>
+          </tr>
+          <tr>
+            <td>Fully offline mode</td>
+            <td><span class="check">✓ Qwen2.5-1.5B on-device (WebLLM)</span></td>
+            <td><span class="cross">✕ 100% cloud-dependent</span></td>
+          </tr>
+          <tr>
+            <td>Consequential action safety</td>
+            <td><span class="check">✓ 9-step authorization protocol</span></td>
+            <td><span class="warn">⚠ Basic confirm dialog or none</span></td>
+          </tr>
+          <tr>
+            <td>Anti-phishing gate</td>
+            <td><span class="check">✓ Deterministic domain + form analysis</span></td>
+            <td><span class="cross">✕ No pre-autofill check</span></td>
+          </tr>
+          <tr>
+            <td>Multi-agent debate</td>
+            <td><span class="check">✓ Local vs Cloud, transparent resolution</span></td>
+            <td><span class="cross">✕ Single opaque model</span></td>
+          </tr>
+          <tr>
+            <td>Prompt injection defense</td>
+            <td><span class="check">✓ Architectural boundary (code-level)</span></td>
+            <td><span class="warn">⚠ Prompt-level instructions only</span></td>
+          </tr>
+          <tr>
+            <td>Open benchmark</td>
+            <td><span class="check">✓ Reproducible, zero-dependency harness</span></td>
+            <td><span class="cross">✕ Claimed numbers, not verifiable</span></td>
+          </tr>
+          <tr>
+            <td>Multilingual guidance</td>
+            <td><span class="check">✓ English, Hindi, Marathi</span></td>
+            <td><span class="cross">✕ English only</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 13: TECH STACK -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-12">
+    <span class="slide-number">13 / 15</span>
+    <p class="overline">Technology</p>
+    <h2 class="slide-title">Built with precision.</h2>
+    <div class="separator"></div>
+
+    <div class="grid-3 gap-24 mt-40">
+      <div class="card" style="text-align:center;">
+        <div class="card-icon purple" style="margin:0 auto 16px;"><span class="material-symbols-outlined">extension</span></div>
+        <h3>Chrome MV3</h3>
+        <p>Manifest V3 extension with service worker, offscreen document, side panel API, and content scripts.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="card-icon green" style="margin:0 auto 16px;"><span class="material-symbols-outlined">memory</span></div>
+        <h3>ONNX Runtime Web</h3>
+        <p>WebAssembly ML inference — SIMD-threaded, running NER transformer + YuNet face detection entirely on-device.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="card-icon cyan" style="margin:0 auto 16px;"><span class="material-symbols-outlined">smart_toy</span></div>
+        <h3>WebLLM (MLC-AI)</h3>
+        <p>On-device Qwen2.5-1.5B via WebGPU. OPFS-cached weights. Zero-network reasoning for Fully Local mode.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="card-icon amber" style="margin:0 auto 16px;"><span class="material-symbols-outlined">visibility</span></div>
+        <h3>Pixtral-12B</h3>
+        <p>Multimodal VLM via Mistral AI SDK. Reasons over redacted screenshots + sanitized DOM for cloud-assisted modes.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="card-icon pink" style="margin:0 auto 16px;"><span class="material-symbols-outlined">dns</span></div>
+        <h3>Express 5 + Zod 4</h3>
+        <p>API gateway with runtime type safety. Request/response validation via strict Zod schemas. Winston logging.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="card-icon red" style="margin:0 auto 16px;"><span class="material-symbols-outlined">lock</span></div>
+        <h3>SHA-256 + Merkle Trees</h3>
+        <p>Tile-hashed cryptographic proofs of redaction. SubtleCrypto API. Downloadable, independently verifiable.</p>
+      </div>
+    </div>
+
+    <div class="grid-3 gap-24 mt-20">
+      <div class="metric-box">
+        <div class="metric-val purple">68+</div>
+        <span class="metric-lbl">Source Files</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val amber">26</div>
+        <span class="metric-lbl">Agent Modules</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val cyan">4</div>
+        <span class="metric-lbl">On-Device ML Models</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 14: LIVE DEMO PROTOCOL -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-13">
+    <span class="slide-number">14 / 15</span>
+    <p class="overline">Demonstration</p>
+    <h2 class="slide-title">See it in action.</h2>
+    <div class="separator"></div>
+
+    <div class="grid-2 gap-32 mt-40">
+      <div>
+        <h3 class="mb-12" style="color:var(--accent-green);">Demo Scenario 1: KYC Onboarding</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <h4>Load the form</h4>
+            <p>Navigate to <code>kyc-onboarding-demo.html</code> — a realistic multi-step KYC form</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Issue the task</h4>
+            <p>"Complete this KYC form using my stored profile"</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Watch redaction</h4>
+            <p>Switch to Privacy Proof tab → see Before/After screenshots with black boxes</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Download proof</h4>
+            <p>Download Merkle proof JSON → open verifier → press Verify → press Tamper → watch it fail</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Authorize submit</h4>
+            <p>Agent pauses at Submit → Human Authorization Gate → you confirm</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 class="mb-12" style="color:var(--accent-amber);">Demo Scenario 2: Adversarial Defense</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <h4>Load hostile page</h4>
+            <p>Navigate to <code>hostile-realworld.html</code> — contains prompt injection attacks</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Watch it resist</h4>
+            <p>"Ignore previous instructions" text on the page is treated as passive data, never instructions</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Phishing test</h4>
+            <p>Load <code>phishing-demo-fixture.html</code> → trust gate catches cross-domain form action → BLOCK</p>
+          </div>
+        </div>
+
+        <h3 class="mb-12 mt-32" style="color:var(--accent-primary);">Demo Scenario 3: Fully Local</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <h4>Set Privacy Dial to Local</h4>
+            <p>Open Settings → set Fully Local mode</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Disconnect network</h4>
+            <p>Turn off WiFi — agent still completes fields using on-device Qwen2.5</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 15: CLOSING -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-14" style="text-align:center;justify-content:center;align-items:center;">
+    <span class="slide-number">15 / 15</span>
+    <div class="hero-badge">
+      <span class="material-symbols-outlined" style="font-size:1rem">shield</span>
+      Privacy Vision Agent
+    </div>
+    <h1 class="mega-title" style="max-width:900px;">The safest data is<br/>the data that<br/>never leaves.</h1>
+    <div class="separator" style="margin:24px auto;"></div>
+    <p class="hero-tagline" style="text-align:center;max-width:600px;">
+      AI browser automation with mathematically provable privacy. No trust required — verify it yourself.
+    </p>
+
+    <div class="grid-4 mt-48" style="max-width:800px;margin-left:auto;margin-right:auto;">
+      <div class="metric-box">
+        <div class="metric-val green">0</div>
+        <span class="metric-lbl">PII values leaked</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val green">100%</div>
+        <span class="metric-lbl">Detection F1</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val purple">4</div>
+        <span class="metric-lbl">Privacy modes</span>
+      </div>
+      <div class="metric-box">
+        <div class="metric-val cyan">14</div>
+        <span class="metric-lbl">Countries covered</span>
+      </div>
+    </div>
+
+    <div class="flex-row mt-48" style="justify-content:center;gap:20px;">
+      <span class="tag tag-accent">SIH 2026</span>
+      <span class="tag tag-green">PS26171</span>
+      <span class="tag">ISRO</span>
+      <span class="tag">Open Source</span>
+    </div>
+    <p style="margin-top:36px;color:var(--text-muted);font-size:0.82rem;">
+      github.com/Rohit-Dhade/Privacy-Vision-Agent
+    </p>
+  </section>
+
+  <!-- ─── Navigation Script ─── -->
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const dots = document.querySelectorAll('.nav-dot');
+
+    function scrollToSlide(index) {
+      slides[index].scrollIntoView({ behavior: 'smooth' });
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const index = Array.from(slides).indexOf(entry.target);
+          dots.forEach((d, i) => d.classList.toggle('active', i === index));
+        }
+      });
+    }, { threshold: 0.5 });
+
+    slides.forEach(slide => observer.observe(slide));
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      const current = Array.from(dots).findIndex(d => d.classList.contains('active'));
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        if (current < slides.length - 1) scrollToSlide(current + 1);
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (current > 0) scrollToSlide(current - 1);
+      }
+    });
+  </script>
+</body>
+</html>

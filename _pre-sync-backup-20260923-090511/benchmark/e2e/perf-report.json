@@ -1,0 +1,130 @@
+{
+  "generatedAt": "2026-09-18T16:01:40.808Z",
+  "runs": 7,
+  "scenarios": {
+    "well-behaved KYC page": {
+      "firstPassMs": 993,
+      "localStepTotal": {
+        "n": 7,
+        "min": 271,
+        "median": 287,
+        "p95": 291,
+        "max": 291,
+        "mean": 284
+      },
+      "phases": {
+        "screenshotDecodeAndRead": {
+          "n": 7,
+          "min": 9,
+          "median": 10,
+          "p95": 10,
+          "max": 20,
+          "mean": 11
+        },
+        "merkleProof": {
+          "n": 7,
+          "min": 49,
+          "median": 53,
+          "p95": 59,
+          "max": 60,
+          "mean": 53
+        },
+        "screenStatePass": {
+          "n": 7,
+          "min": 15,
+          "median": 20,
+          "p95": 24,
+          "max": 47,
+          "mean": 23
+        },
+        "iconClassification": {
+          "n": 7,
+          "min": 12,
+          "median": 13,
+          "p95": 14,
+          "max": 35,
+          "mean": 16
+        }
+      },
+      "iconsClassified": 13,
+      "popupHeapMB": 32.6,
+      "heapLimitMB": 2144,
+      "screenshotKB": 189,
+      "elements": 17,
+      "sensitiveItems": 12,
+      "frames": 1,
+      "faceDetectionAvailable": true,
+      "modelFootprintKB": {
+        "iconClassifier": 11,
+        "visionEngine": 0,
+        "note": "weights on disk; the vision engine has none"
+      }
+    },
+    "hostile (shadow DOM + iframe)": {
+      "firstPassMs": 244,
+      "localStepTotal": {
+        "n": 7,
+        "min": 219,
+        "median": 239,
+        "p95": 243,
+        "max": 250,
+        "mean": 237
+      },
+      "phases": {
+        "screenshotDecodeAndRead": {
+          "n": 7,
+          "min": 10,
+          "median": 11,
+          "p95": 11,
+          "max": 23,
+          "mean": 13
+        },
+        "merkleProof": {
+          "n": 7,
+          "min": 47,
+          "median": 52,
+          "p95": 64,
+          "max": 67,
+          "mean": 55
+        },
+        "screenStatePass": {
+          "n": 7,
+          "min": 16,
+          "median": 19,
+          "p95": 22,
+          "max": 40,
+          "mean": 22
+        },
+        "iconClassification": {
+          "n": 7,
+          "min": 0,
+          "median": 0,
+          "p95": 0,
+          "max": 0,
+          "mean": 0
+        }
+      },
+      "iconsClassified": 0,
+      "popupHeapMB": 57.4,
+      "heapLimitMB": 2144,
+      "screenshotKB": 88,
+      "elements": 4,
+      "sensitiveItems": 3,
+      "frames": 2,
+      "faceDetectionAvailable": true,
+      "modelFootprintKB": {
+        "iconClassifier": 11,
+        "visionEngine": 0,
+        "note": "weights on disk; the vision engine has none"
+      }
+    }
+  },
+  "notes": [
+    "Local perception only. No cloud reasoner is contacted; there is no backend in a test sandbox, and a network figure would characterise the tester's link rather than this system.",
+    "In Hybrid mode a step that the local field matcher can satisfy makes NO network call at all, so for those steps the local number below IS the end-to-end latency.",
+    "In Cloud-Assisted mode add one VLM round trip (typically 1.5-3s) to the local number.",
+    "In Fully Local mode there is no network call by construction, enforced inside the only function in the extension that calls fetch().",
+    "The first pass is slower because it pays for content-script injection across all frames and the one-time ONNX/YuNet model load. Subsequent steps do not.",
+    "Measured headless-with-xvfb on a cloud container with --disable-gpu, which is a pessimistic environment: real hardware with GPU rasterisation should do better, not worse."
+  ]
+}

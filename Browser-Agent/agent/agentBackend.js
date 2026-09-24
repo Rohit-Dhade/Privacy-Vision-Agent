@@ -229,10 +229,24 @@
         text:        el.text        || undefined,
         ariaLabel:   el.ariaLabel   || undefined,
         placeholder: el.placeholder || undefined,
+        // Set only for an unlabeled icon-only button. Either a named glyph
+        // from the trained local classifier ('icon_menu', 'icon_close', …;
+        // see utils/iconClassifier.js) or 'unlabeled_icon_detected' from
+        // the v0 heuristic when the classifier was not confident enough to
+        // commit. A purely structural hint drawn from a closed enum, same
+        // trust level as text/ariaLabel, never a value read off the page.
+        inferredLabel: el.inferredLabel || undefined,
 
         // ── Element state ─────────────────────────────────────────
         enabled: el.enabled != null ? el.enabled : true,
         visible: el.visible != null ? el.visible : true,
+        // Emitted only when the local vision engine found this element's own
+        // coordinates featureless — layout says the control is there, the
+        // pixels say nothing is drawn. Tells the reasoner the target is
+        // unreliable (covered, or not yet rendered) instead of letting it
+        // click into nothing. Omitted in the normal case, so it costs
+        // nothing on a well-behaved page.
+        visuallyPainted: el.visuallyPainted === false ? false : undefined,
 
         // ── Semantic categorizations ──────────────────────────────
         isSearch:    el.isSearch    || undefined,
@@ -317,8 +331,10 @@
           key: cleanKey,
           elementId: elementId,
           targetSelector: targetSelector,
-          label: help.fieldName,
-          fieldName: help.fieldName,
+          // Prefer the field's own visible label ("One-Time Passcode") over
+          // the generic category guessed from it ("Password").
+          label: (el && (el.text || el.ariaLabel)) || help.fieldName,
+          fieldName: (el && (el.text || el.ariaLabel)) || help.fieldName,
           expectedValue: help.expectedValue,
           selectorText: targetSelector || (elementId != null ? `#element-${elementId}` : ''),
           type: isPasswordField ? 'password' : 'text'
@@ -551,10 +567,103 @@
     return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   }
 
+  /**
+   * Builds a truncated, display-safe copy of the exact payload that just
+   * crossed (or was about to cross) the network boundary — for the popup's
+   * live "Privacy Receipt" panel. This is NOT a re-sanitization; sanitizedBody
+   * has already been through PrivacyBoundary.sanitizeOutboundPayload(), so
+   * this only truncates size for the UI (full base64 screenshot, and any
+   * very long element list) — it never re-exposes anything that was stripped.
+   */
+  function buildSanitizedPreview(sanitizedBody, screenshotBytes) {
+    try {
+      const preview = JSON.parse(JSON.stringify(sanitizedBody || {}));
+
+      if (preview.screenshot) {
+        preview.screenshot = {
+          format: preview.screenshot.format,
+          width: preview.screenshot.width,
+          height: preview.screenshot.height,
+          dataBase64: `<redacted screenshot omitted from preview — ${screenshotBytes} bytes, no raw pixels shown>`
+        };
+      }
+
+      if (preview.domSkeleton && Array.isArray(preview.domSkeleton.elements)) {
+        const MAX_PREVIEW_ELEMENTS = 6;
+        const total = preview.domSkeleton.elements.length;
+        if (total > MAX_PREVIEW_ELEMENTS) {
+          preview.domSkeleton.elements = [
+            ...preview.domSkeleton.elements.slice(0, MAX_PREVIEW_ELEMENTS),
+            { note: `… ${total - MAX_PREVIEW_ELEMENTS} more element(s) omitted from this preview only — still sent, still sanitized identically.` }
+          ];
+        }
+      }
+
+      let text = JSON.stringify(preview, null, 2);
+      const MAX_CHARS = 4000;
+      if (text.length > MAX_CHARS) {
+        text = `${text.slice(0, MAX_CHARS)}\n… (truncated for display — full payload was smaller in scope, larger in bytes)`;
+      }
+      return text;
+    } catch (e) {
+      return `Preview unavailable: ${e.message}`;
+    }
+  }
+
   class AgentBackend {
 
     constructor() {
       this._sessionId = generateSessionId();
+      this._lastTransmission = null;
+    }
+
+    /**
+     * Builds and stores the telemetry record consumed by the popup's live
+     * Privacy Receipt panel. Called for every attempted transmission,
+     * including one blocked by the adversarial pre-flight scan — a BLOCKED
+     * record is itself proof the boundary works, so it's just as worth
+     * showing as a successful one.
+     */
+    _recordTransmission({ sanitizedBody, domSkeleton, redactionMap, sensitiveItems, endpoint, scanPassed, scanError, blocked }) {
+      const screenshotBase64 = sanitizedBody?.screenshot?.dataBase64 || '';
+      const screenshotBytes = screenshotBase64 ? Math.ceil((screenshotBase64.length * 3) / 4) : 0;
+      const serializedBytes = (() => {
+        try { return JSON.stringify(sanitizedBody).length; } catch (_) { return 0; }
+      })();
+
+      const patternsChecked = (typeof root !== 'undefined' && root.__BA_PrivacyBoundary && root.__BA_PrivacyBoundary.getCheckedPatternNames)
+        ? root.__BA_PrivacyBoundary.getCheckedPatternNames()
+        : ['CREDIT_CARD', 'PAN_CARD', 'AADHAAR', 'PASSWORD_FIELD'];
+
+      this._lastTransmission = {
+        timestamp: Date.now(),
+        sessionId: this._sessionId,
+        endpoint,
+        blocked: Boolean(blocked),
+        bytes: {
+          totalPayload: serializedBytes,
+          screenshotBase64: screenshotBytes
+        },
+        counts: {
+          elementsSent: domSkeleton?.elements?.length || 0,
+          sensitiveItemsDetectedLocally: Array.isArray(sensitiveItems) ? sensitiveItems.length : 0,
+          redactionMapEntries: Array.isArray(redactionMap) ? redactionMap.length : 0,
+          actionHistoryEntries: Array.isArray(sanitizedBody?.actionHistory) ? sanitizedBody.actionHistory.length : 0
+        },
+        adversarialScan: {
+          passed: Boolean(scanPassed),
+          error: scanError || null,
+          patternsChecked
+        },
+        sanitizedPayloadPreview: buildSanitizedPreview(sanitizedBody, screenshotBytes)
+      };
+
+      return this._lastTransmission;
+    }
+
+    /** Read by popup.js after every decideNextAction() call to render the live Privacy Receipt panel. */
+    getLastTransmissionSummary() {
+      return this._lastTransmission;
     }
 
     async getEndpoint() {
@@ -607,7 +716,25 @@
         pageContext,
         taskPlan,
         taskMemory,
+        privacyDialMode,
+        visualState,
       } = payload;
+
+      // Hard architectural guard, independent of the caller: if the
+      // Privacy Dial (agent/privacyDial.js) is set to "Fully Local", this
+      // — the ONLY function in the extension that makes an outbound
+      // network request — refuses to run at all. This isn't a preference
+      // the cloud call politely honors; it's a second, independent check
+      // so the "zero data leaves the device" guarantee doesn't rest on
+      // every call site remembering not to invoke this method. Callers in
+      // Fully Local mode should use decideNextActionLocalOnly() instead.
+      if (privacyDialMode === 'local') {
+        throw new Error(
+          'Privacy Dial is set to Fully Local — agentBackend.decideNextAction() ' +
+          '(the only network call in this extension) refuses to run. This call ' +
+          'should never have been attempted; use decideNextActionLocalOnly() instead.'
+        );
+      }
 
       const meta    = await screenshotMeta(redactedScreenshotDataUrl);
       const base64  = dataUrlToBase64(redactedScreenshotDataUrl);
@@ -635,18 +762,33 @@
         ...(pageContext ? { pageContext } : {}),
         ...(taskPlan ? { taskPlan } : {}),
         ...(taskMemory ? { taskMemory } : {}),
+        // Local screen-state perception (utils/visualStateEngine.js): what
+        // the raw pixels showed that the DOM could not report — page still
+        // loading, a blocking overlay present, whether the last action
+        // changed anything. Filtered field-by-field by
+        // privacyBoundary.sanitizeVisualState() before it goes anywhere.
+        ...(visualState ? { visualState } : {}),
       };
 
       // Enforce strict structural privacy boundary
       const boundaryEngine = (typeof root !== 'undefined' && root.__BA_PrivacyBoundary) ? root.__BA_PrivacyBoundary : null;
       const sanitizedBody = boundaryEngine ? boundaryEngine.sanitizeOutboundPayload(requestBody) : requestBody;
+      const endpoint = await this.getEndpoint();
 
-      // Pre-flight adversarial scan: ensure no unredacted secret or raw PII crosses the wire
-      if (boundaryEngine) {
-        boundaryEngine.assertSafeForTransmission(sanitizedBody);
+      // Pre-flight adversarial scan: ensure no unredacted secret or raw PII crosses the wire.
+      // Every attempt — pass or fail — is recorded for the popup's live
+      // Privacy Receipt panel, so a BLOCKED transmission is visible proof
+      // the boundary works, not just a silently-thrown error.
+      try {
+        if (boundaryEngine) {
+          boundaryEngine.assertSafeForTransmission(sanitizedBody);
+        }
+        this._recordTransmission({ sanitizedBody, domSkeleton, redactionMap, sensitiveItems, endpoint, scanPassed: true, blocked: false });
+      } catch (scanErr) {
+        this._recordTransmission({ sanitizedBody, domSkeleton, redactionMap, sensitiveItems, endpoint, scanPassed: false, scanError: scanErr.message, blocked: true });
+        throw scanErr; // hard-abort — nothing crosses the wire on a failed scan
       }
 
-      const endpoint = await this.getEndpoint();
       let response;
       try {
         response = await fetch(endpoint, {
@@ -686,6 +828,125 @@
       return translated;
     }
 
+    /**
+     * The Fully Local decision path (Privacy Dial = 'local'). Makes no
+     * network request and needs none of the redacted-screenshot / DOM
+     * skeleton machinery decideNextAction() builds — it only needs the
+     * live elements and the form summary already computed locally each
+     * step. It deliberately knows how to do only two things, honestly:
+     *
+     *   1. Point at the next empty, semantically-matchable form field
+     *      (agent/fieldMatcher.js) so the existing 'fill_from_local'
+     *      execution path (popup.js) can look up agent/privateDataStore.js
+     *      at execution time and either fill it or fall back to asking
+     *      the human — exactly the same execution code Hybrid/Cloud mode
+     *      already uses for this action, just reached without ever
+     *      building a network payload.
+     *   2. If no field matches (or none remain), ask the human directly
+     *      via the same ask_user shape decideNextAction() would return.
+     *
+     * It never returns 'click', 'navigate', or any action that requires
+     * judgment about page semantics a deterministic local matcher can't
+     * responsibly make — that's the honest capability boundary of this
+     * mode, not an oversight. Consequential actions (submit/pay/etc.) are
+     * handled by the caller via the same handleFormCompletionGate() path
+     * used for explicit form-completion tasks, which was already fully
+     * local (it runs agent/consequentialActionDetector.js + the 9-step
+     * human-authorization protocol, no network involved either way).
+     */
+    decideNextActionLocalOnly({ extraction, formSummary } = {}) {
+      const elements = (extraction && Array.isArray(extraction.elements)) ? extraction.elements : [];
+      const formAnalyzer = (typeof root !== 'undefined') ? root.__BA_FormAnalyzer : null;
+      const fieldMatcher = (typeof root !== 'undefined') ? root.__BA_FieldMatcher : null;
+
+      for (const el of elements) {
+        const isFormField = formAnalyzer ? formAnalyzer.isFormInputElement(el) : (el && el.tag === 'input');
+        if (!isFormField) continue;
+        if (isElementPopulated(el)) continue;
+
+        const match = fieldMatcher ? fieldMatcher.matchElement(el) : { matched: false, key: null };
+        if (match.matched && match.key) {
+          // Value lookup happens at execution time in popup.js, same as
+          // every other fill_from_local decision — this object never
+          // carries or even sees the actual private value.
+          return { action: 'fill_from_local', elementId: el.id, targetSelector: el.selector, value: null };
+        }
+
+        // No confident local match for a field that clearly needs a
+        // value — ask the human rather than guess, and rather than
+        // (as Hybrid/Cloud would) ask a model to infer it.
+        return buildAskUserAction(el, el.id, el.selector);
+      }
+
+      return { action: 'wait', elementId: null, targetSelector: null, value: null };
+    }
+
+    /**
+     * The on-device LLM reasoning path (Qwen2.5 via agent/webllmEngine.js,
+     * run inside offscreen.js). Used two ways, per
+     * claude/v25-master-implementation-guide.md:
+     *
+     *   1. Fully Local mode (Privacy Dial = 'local'): called from
+     *      popup.js only AFTER decideNextActionLocalOnly() above already
+     *      failed to find a deterministic field-matcher answer — this is
+     *      the "ask the on-device model before giving up and asking the
+     *      human" upgrade v25 calls for.
+     *   2. Hybrid Debate mode (Privacy Dial = 'debate'): called by
+     *      agent/debateManager.js in parallel with decideNextAction()
+     *      (the cloud path) so the two can be compared.
+     *
+     * This makes ZERO network requests of its own. It sends one
+     * chrome.runtime message to this extension's own offscreen document
+     * (background/service-worker.js forwards RUN_WEBLLM_REASON exactly
+     * like it already does for RUN_NER_INFERENCE / RUN_FACE_DETECTION /
+     * RUN_ID_IMAGE_OCR) and reads back a plain JSON action object — that
+     * message never leaves the browser, so it is safe to call in every
+     * Privacy Dial position, including 'local', without touching the
+     * hard network guard at the top of decideNextAction() above.
+     *
+     * The model's raw suggestion is passed through the exact same
+     * translateAction() normalization decideNextAction() uses for the
+     * cloud model's suggestions — so every existing safety behavior
+     * (submit/payment detection -> notify_submit, sensitive-field guard ->
+     * ask_user, already-filled-field skip) applies identically regardless
+     * of which reasoner proposed the action.
+     */
+    async decideNextActionLocalLLM({ task, extraction, actionHistory, formSummary, mode = 'hitl' } = {}) {
+      const elements = (extraction && Array.isArray(extraction.elements)) ? extraction.elements : [];
+      const url = (extraction && extraction.url) || (typeof location !== 'undefined' ? location.href : 'unknown');
+
+      let response;
+      try {
+        response = await chrome.runtime.sendMessage({
+          type: 'RUN_WEBLLM_REASON',
+          task,
+          elements,
+          history: Array.isArray(actionHistory) ? actionHistory.slice(-6) : [],
+          url,
+        });
+      } catch (err) {
+        throw new Error(`On-device reasoning message failed: ${err.message || err}`);
+      }
+
+      if (!response || response.ok === false) {
+        throw new Error((response && response.error) || 'On-device reasoning (WebLLM) is unavailable.');
+      }
+
+      const rawAction = response.decision;
+      if (!rawAction || typeof rawAction.action !== 'string') {
+        throw new Error('On-device reasoning returned no usable action.');
+      }
+
+      const translated = translateAction(rawAction, elements, mode);
+      return {
+        ...translated,
+        confidence: typeof rawAction.confidence === 'number' ? rawAction.confidence : 0.5,
+        reasoning: rawAction.reasoning || '',
+        source: 'local_llm',
+        modelId: rawAction.modelId || null,
+      };
+    }
+
     buildAskUserAction(el, elementId, targetSelector) {
       return buildAskUserAction(el, elementId, targetSelector);
     }
@@ -704,6 +965,7 @@
 
     resetSession() {
       this._sessionId = generateSessionId();
+      this._lastTransmission = null;
     }
   }
 

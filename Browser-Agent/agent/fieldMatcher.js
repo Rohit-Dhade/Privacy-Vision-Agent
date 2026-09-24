@@ -24,7 +24,10 @@
   // Sensitive or transient fields that must NEVER match private store keys
   const EXCLUDED_PATTERNS = [
     /\b(password|passwd|pwd|passcode|secret)\b/i,
-    /\b(otp|one time password|pin|verification code|security code|2fa|mfa)\b/i,
+    // "pin" alone is a secret (card/UPI PIN) and is never auto-filled, but
+    // "PIN code" / "pin-code" is India's postal code and must reach the zip
+    // rule below instead of being blocked here.
+    /\b(otp|one time password|pin(?![-_\s]?code)|verification code|security code|2fa|mfa)\b/i,
     /\b(captcha|recaptcha|hcaptcha|turnstile)\b/i,
     /\b(search|query|find|filter)\b/i,
     /\b(comment|feedback|message|review|description|notes|remarks)\b/i,
@@ -319,9 +322,21 @@
       const rawCandidates = this.extractCandidateStrings(element);
       const allText = rawCandidates.join(' ');
 
+      // A visible label that is EXACTLY a known alias (e.g. "PIN Code" for
+      // zip) wins over an exclusion keyword that only appears in the
+      // element's id/name ("f-pin"). Anything else still hits the guard.
+      const labelCandidates = [element.ariaLabel, element.placeholder, element.text]
+        .filter((c) => typeof c === 'string' && c.trim())
+        .map((c) => this.normalizeText(c));
+      const hasExactAliasLabel = labelCandidates.some((c) =>
+        SEMANTIC_RULES.some((rule) => (rule.exactMatches || []).some((a) => c === a || c === this.normalizeText(a))));
+      const labelText = labelCandidates.join(' ');
+
       // 1. Guard against excluded / transient fields (passwords, OTPs, search, CAPTCHAs)
       for (const pattern of EXCLUDED_PATTERNS) {
-        if (pattern.test(allText) || pattern.test(elType)) {
+        const hitsLabel = pattern.test(labelText);
+        const hitsAny = hitsLabel || pattern.test(allText);
+        if ((hitsAny && (hitsLabel || !hasExactAliasLabel)) || pattern.test(elType)) {
           return {
             matched: false,
             key: null,
@@ -341,21 +356,19 @@
         };
       }
 
-      // 2. High-confidence match via HTML Input Type
-      for (const rule of SEMANTIC_RULES) {
-        if (rule.types.includes(elType)) {
-          return {
-            matched: true,
-            key: rule.key,
-            confidence: 'high',
-            reason: `HTML input type matched: "${elType}"`
-          };
-        }
-      }
-
       const normalizedCandidates = rawCandidates.map(c => this.normalizeText(c)).filter(Boolean);
 
-      // 3. Exact alias match against normalized candidate strings
+      // 2. Exact alias match against normalized candidate strings. This
+      // (and the regex pass in step 3) deliberately run BEFORE the
+      // HTML-input-type check below: a specific label like "Emergency
+      // Contact Number" should resolve to emergency_phone even on a
+      // type="tel" input, not fall through to the generic "phone" key
+      // just because the type happens to be more specific rule's type
+      // too. Reordered after benchmark/run-benchmark.js's field-matching
+      // fixture (emergency-phone-not-generic-phone) surfaced the old
+      // ordering — type-checked first — as a real precision gap: type
+      // is a reliable SIGNAL, but a specific label is more informative
+      // than a generic type whenever both are present.
       for (const rule of SEMANTIC_RULES) {
         for (const candidate of normalizedCandidates) {
           for (const alias of rule.exactMatches) {
@@ -371,7 +384,7 @@
         }
       }
 
-      // 4. Regex pattern match on combined candidate text
+      // 3. Regex pattern match on combined candidate text
       for (const rule of SEMANTIC_RULES) {
         if (rule.regex && rule.regex.test(allText)) {
           return {
@@ -379,6 +392,20 @@
             key: rule.key,
             confidence: 'high',
             reason: `Semantic pattern match for "${rule.key}"`
+          };
+        }
+      }
+
+      // 4. High-confidence match via HTML Input Type — now a fallback for
+      // when no label/placeholder/aria text gave a more specific match
+      // above (e.g. a bare `<input type="email">` with no label at all).
+      for (const rule of SEMANTIC_RULES) {
+        if (rule.types.includes(elType)) {
+          return {
+            matched: true,
+            key: rule.key,
+            confidence: 'high',
+            reason: `HTML input type matched: "${elType}"`
           };
         }
       }

@@ -3,6 +3,27 @@
 <head>
   <meta charset="utf-8">
   <script src="lib/ort.wasm.min.js"></script>
+  <!-- On-device OCR (PP-OCR / PaddleOCR) confirmation for id-image
+       redaction runs through this same ONNX Runtime Web instance loaded
+       above (ort.InferenceSession, same as the YuNet face model) — see
+       the "On-device OCR" section in offscreen.js. No separate script
+       tag needed. Its two model files (models/ocr/det.onnx,
+       models/ocr/rec.onnx) are vendored — see models/ocr/README.md for
+       what was fetched, from where, and how it was verified. Safe if
+       ever removed again — offscreen.js fails closed and heuristic
+       redaction still runs either way. -->
+  <!-- WebLLM runtime (vendored per lib/webllm/README.md) — enables
+       on-device LLM reasoning for Fully Local mode's local-model fallback
+       and Hybrid Debate mode. @mlc-ai/web-llm ships ESM-only (no UMD/IIFE
+       global build), so it's loaded as a module and bridged onto
+       self.webllm by the small loader shim below, rather than as a plain
+       <script src> like the rest of this file — see
+       lib/webllm/web-llm-loader.mjs's own header comment for why. Safe if
+       ever removed again: agent/webllmEngine.js's isAvailable() fails
+       closed and both modes degrade gracefully (see that file's header
+       comment). -->
+  <script type="module" src="lib/webllm/web-llm-loader.mjs"></script>
+  <script src="agent/webllmEngine.js"></script>
   <script src="offscreen.js"></script>
 </head>
 <body></body>

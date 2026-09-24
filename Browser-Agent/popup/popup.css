@@ -27,7 +27,10 @@
   
   --pv-success: #16a34a;
   --pv-success-bg: #dcfce7;
-  
+
+  --pv-warning: #b45309;
+  --pv-warning-bg: #fef3c7;
+
   --pv-radius-sm: 6px;
   --pv-radius: 10px;
   --pv-radius-lg: 14px;
@@ -50,6 +53,29 @@
 /* Explicit rule so HTML [hidden] attributes are never overridden by display: flex / grid */
 [hidden] {
   display: none !important;
+}
+
+/* Consistent keyboard-focus indicator (WCAG 2.1 SC 2.4.7 Focus Visible).
+   Nothing in this file strips the browser's default outline, so this is
+   additive, not a fix for a suppressed focus ring — it's here so every
+   interactive element gets the SAME indicator, in this app's own primary
+   color, instead of each browser's differently-styled default. The
+   :has() selector for radio-wrapped option cards (mode/privacy-dial
+   pickers) is supported from Chrome 105+, well under this extension's
+   own minimum_chrome_version (114+, see manifest.json). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--pv-primary);
+  outline-offset: 2px;
+}
+
+.pv-mode-popover-item:has(input:focus-visible) {
+  outline: 2px solid var(--pv-primary);
+  outline-offset: 2px;
 }
 
 html, body.pv-body {
@@ -215,6 +241,75 @@ html, body.pv-body {
 }
 
 /* ==========================================================================
+   Primary View Tabs (Agent / Privacy Proof)
+   ========================================================================== */
+.pv-tab-bar {
+  display: flex;
+  background-color: var(--pv-surface);
+  border-bottom: 1px solid var(--pv-border);
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.pv-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pv-on-surface-variant);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.pv-tab-btn .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.pv-tab-btn:hover {
+  color: var(--pv-on-surface);
+}
+
+.pv-tab-btn.active {
+  color: var(--pv-primary);
+  border-bottom-color: var(--pv-primary);
+}
+
+.pv-tab-btn:focus-visible {
+  outline: 2px solid var(--pv-primary);
+  outline-offset: -2px;
+}
+
+/* ==========================================================================
+   Privacy Proof View
+   ========================================================================== */
+.pv-proof-intro {
+  background-color: var(--pv-primary-soft);
+  border: 1px solid var(--pv-border);
+  border-radius: var(--pv-radius);
+  padding: 10px 12px;
+  margin: 0;
+}
+
+.pv-proof-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pv-proof-actions .pv-btn {
+  text-decoration: none;
+}
+
+/* ==========================================================================
    Agent Main View & Scrollable Area
    ========================================================================== */
 .pv-agent-view {
@@ -236,6 +331,17 @@ html, body.pv-body {
   scroll-behavior: smooth;
 }
 
+/* Children of the scrolling column must keep their natural height.
+   Without this, any child with overflow:hidden (every .pv-subpanel —
+   the screenshot / Before-After panel included) gets min-height:0 as a
+   flex item and is squeezed to zero height whenever the column has more
+   content than fits, leaving only its 1px borders visible as a thin line.
+   That is why the redacted screenshot never appeared in the Privacy Proof
+   tab. */
+.pv-main > * {
+  flex-shrink: 0;
+}
+
 /* Custom scrollbars */
 .pv-main::-webkit-scrollbar,
 .pv-settings-view::-webkit-scrollbar,
@@ -248,13 +354,13 @@ html, body.pv-body {
 .pv-settings-view::-webkit-scrollbar-thumb,
 .pv-details-content::-webkit-scrollbar-thumb,
 .pv-store-entries-list::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
+  background-color: var(--pv-border-variant);
   border-radius: 10px;
 }
 
 .pv-main::-webkit-scrollbar-thumb:hover,
 .pv-settings-view::-webkit-scrollbar-thumb:hover {
-  background-color: #94a3b8;
+  background-color: var(--pv-on-surface-subtle);
 }
 
 /* ==========================================================================
@@ -383,6 +489,9 @@ html, body.pv-body {
   color: var(--pv-on-surface);
   word-break: break-word;
   line-height: 1.45;
+  /* Agent messages are built with \n line breaks (bullet lists, findings);
+     without this they collapsed into one run-on paragraph. */
+  white-space: pre-line;
 }
 
 .pv-msg-system {
@@ -460,7 +569,7 @@ html, body.pv-body {
 }
 
 .pv-redaction-header {
-  background-color: #f8fafc;
+  background-color: var(--pv-surface-subtle);
   border-bottom: 1px solid var(--pv-border);
   padding: 5px 8px;
   display: flex;
@@ -515,7 +624,7 @@ html, body.pv-body {
   display: flex;
   align-items: center;
   gap: 5px;
-  background-color: #f1f5f9;
+  background-color: var(--pv-surface-alt);
   border-top: 1px solid var(--pv-border);
   padding: 4px 8px;
   font-size: 10px;
@@ -606,7 +715,7 @@ html, body.pv-body {
 
 .pv-mode-dropdown-btn:hover {
   background-color: var(--pv-secondary-container);
-  border-color: #cbd5e1;
+  border-color: var(--pv-border-variant);
 }
 
 .pv-mode-btn-icon {
@@ -649,6 +758,13 @@ html, body.pv-body {
 @keyframes pvPopoverIn {
   from { opacity: 0; transform: translateY(6px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.pv-dial-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
 }
 
 .pv-mode-popover-item {
@@ -1097,7 +1213,7 @@ html, body.pv-body {
 }
 
 .pv-btn-secondary:hover {
-  background-color: #e2e8f0;
+  background-color: var(--pv-secondary-container);
 }
 
 .pv-btn-sm {
@@ -1242,7 +1358,7 @@ html, body.pv-body {
   padding: 6px;
   display: flex;
   justify-content: center;
-  background-color: #0f172a;
+  background-color: var(--pv-on-surface);
 }
 
 .pv-screenshot-canvas {
@@ -1266,6 +1382,11 @@ html, body.pv-body {
   font-size: 14px;
 }
 
+#constitutionVersionBadge {
+  margin-left: auto;
+  font-size: 8.5px;
+}
+
 .pv-list {
   display: flex;
   flex-direction: column;
@@ -1281,6 +1402,36 @@ html, body.pv-body {
   border-radius: 4px;
   max-height: 100px;
   overflow-y: auto;
+}
+
+/* ==========================================================================
+   Privacy Receipt — live proof of what left the browser
+   ========================================================================== */
+.pv-receipt-details {
+  border: 1px solid var(--pv-border);
+  border-radius: var(--pv-radius-sm);
+  padding-bottom: 8px;
+}
+
+.pv-receipt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  padding: 4px 6px 0;
+}
+
+.pv-receipt-grid .pv-metric-val {
+  font-size: 12.5px;
+}
+
+.pv-scan-pass { color: #1e8e3e !important; }
+.pv-scan-fail { color: #d93025 !important; }
+.pv-scan-warn { color: #e37400 !important; }
+
+#privacyReceiptPayload {
+  max-height: 160px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .pv-mono-line {
@@ -1309,3 +1460,600 @@ html, body.pv-body {
   font-size: 10px;
   color: var(--pv-on-surface-subtle);
 }
+
+/* ==========================================================================
+   Hybrid Debate — evidence panel (agent/debateManager.js's runDebate()
+   result, rendered by popup.js's renderDebateEvidence()). Shows the local
+   (on-device) and cloud decisions side by side with their confidence
+   scores, so a disagreement is visible and explained rather than hidden
+   behind whichever one was auto-selected.
+   ========================================================================== */
+.pv-debate-box {
+  margin-top: 8px;
+  border: 1px solid var(--pv-border);
+  border-radius: var(--pv-radius-sm);
+  overflow: hidden;
+  width: 100%;
+}
+
+.pv-debate-header {
+  background-color: var(--pv-surface-subtle);
+  border-bottom: 1px solid var(--pv-border);
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pv-debate-header .material-symbols-outlined {
+  font-size: 14px;
+  color: var(--pv-primary);
+  font-variation-settings: 'FILL' 1;
+}
+
+.pv-debate-header-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--pv-on-surface);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+.pv-debate-verdict {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: var(--pv-radius-pill);
+  text-transform: uppercase;
+}
+
+.pv-debate-verdict.agree {
+  color: var(--pv-success);
+  background-color: var(--pv-success-bg);
+}
+
+.pv-debate-verdict.disagree {
+  color: var(--pv-warning);
+  background-color: var(--pv-warning-bg);
+}
+
+.pv-debate-verdict.disagree-strong {
+  color: var(--pv-on-error-container);
+  background-color: var(--pv-error-container);
+}
+
+.pv-debate-verdict.degraded {
+  color: var(--pv-on-surface-subtle);
+  background-color: var(--pv-surface-alt);
+}
+
+.pv-debate-columns {
+  display: flex;
+  gap: 1px;
+  background-color: var(--pv-border);
+}
+
+.pv-debate-col {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--pv-surface, #fff);
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pv-debate-col-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--pv-on-surface-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pv-debate-col-label .pv-debate-confidence {
+  font-variant-numeric: tabular-nums;
+  color: var(--pv-primary);
+}
+
+.pv-debate-col-action {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pv-on-surface);
+  word-break: break-word;
+}
+
+.pv-debate-col-reasoning {
+  font-size: 10.5px;
+  color: var(--pv-on-surface-subtle);
+  line-height: 1.4;
+}
+
+.pv-debate-col.pv-debate-winner {
+  box-shadow: inset 0 0 0 1px var(--pv-primary);
+}
+
+/* Task Verification evidence card (agent/verificationLoop.js) — same
+   structure as .pv-debate-box above, reused deliberately for visual
+   consistency between the two "here's the evidence" panels. */
+.pv-verify-box {
+  margin-top: 8px;
+  border: 1px solid var(--pv-border);
+  border-radius: var(--pv-radius-sm);
+  overflow: hidden;
+  width: 100%;
+}
+
+.pv-verify-header {
+  background-color: var(--pv-surface-subtle);
+  border-bottom: 1px solid var(--pv-border);
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pv-verify-header .material-symbols-outlined {
+  font-size: 14px;
+  color: var(--pv-primary);
+  font-variation-settings: 'FILL' 1;
+}
+
+.pv-verify-header-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--pv-on-surface);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+.pv-verify-verdict {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: var(--pv-radius-pill);
+  text-transform: uppercase;
+}
+
+.pv-verify-verdict.pass {
+  color: var(--pv-success);
+  background-color: var(--pv-success-bg);
+}
+
+.pv-verify-verdict.fail {
+  color: var(--pv-warning);
+  background-color: var(--pv-warning-bg);
+}
+
+.pv-verify-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background-color: var(--pv-border);
+}
+
+.pv-verify-check {
+  background-color: var(--pv-surface, #fff);
+  padding: 6px 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pv-verify-check .material-symbols-outlined {
+  font-size: 14px;
+  margin-top: 1px;
+  color: var(--pv-on-surface-subtle);
+}
+
+.pv-verify-check.passed:not(.advisory) .material-symbols-outlined {
+  color: var(--pv-success);
+}
+
+.pv-verify-check.failed:not(.advisory) .material-symbols-outlined {
+  color: var(--pv-on-error-container, #b91c1c);
+}
+
+.pv-verify-check-text {
+  font-size: 10.5px;
+  color: var(--pv-on-surface-subtle);
+  line-height: 1.4;
+}
+
+.pv-verify-check-text em {
+  font-style: italic;
+}
+
+.pv-verify-footer {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--pv-on-surface-subtle);
+  border-top: 1px solid var(--pv-border);
+}
+
+.pv-verify-footer .material-symbols-outlined {
+  font-size: 13px;
+  color: var(--pv-primary);
+}
+
+/* Visual Evidence card (agent/evidenceGenerator.js) — an annotated,
+   already-redacted screenshot with colored highlight boxes. */
+.pv-evidence-box {
+  margin-top: 8px;
+  border: 1px solid var(--pv-border);
+  border-radius: var(--pv-radius-sm);
+  overflow: hidden;
+  width: 100%;
+}
+
+.pv-evidence-header {
+  background-color: var(--pv-surface-subtle);
+  border-bottom: 1px solid var(--pv-border);
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pv-evidence-header .material-symbols-outlined {
+  font-size: 14px;
+  color: var(--pv-primary);
+  font-variation-settings: 'FILL' 1;
+}
+
+.pv-evidence-header-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--pv-on-surface);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pv-evidence-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background-color: var(--pv-surface-alt);
+}
+
+.pv-evidence-legend {
+  display: flex;
+  gap: 12px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--pv-border);
+  font-size: 10px;
+  color: var(--pv-on-surface-subtle);
+}
+
+.pv-evidence-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pv-evidence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pv-evidence-dot.safe { background-color: var(--pv-success); }
+.pv-evidence-dot.danger { background-color: var(--pv-error); }
+.pv-evidence-dot.ambiguous { background-color: var(--pv-warning); }
+
+.pv-debate-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--pv-surface-alt);
+  border-top: 1px solid var(--pv-border);
+  padding: 4px 8px;
+  font-size: 10.5px;
+  color: var(--pv-on-surface-subtle);
+}
+
+.pv-debate-footer .material-symbols-outlined {
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Dark Mode (claude/v25-master-implementation-guide.md Part 3, Task 4.1 —
+   "Accessibility & Dark Mode"). Follows the OS-level color-scheme
+   preference only (no in-app toggle exists yet — see docs/TESTING.md for
+   why: a toggle needs a persisted setting + a UI control, neither of which
+   is worth adding until this can be checked in a real browser). Every
+   --pv-* design token from :root is overridden here, so any rule in this
+   file that already reads a token (the large majority, after this same
+   task converted ~30 hardcoded hex values above to var() references)
+   picks up the dark palette automatically with zero further changes.
+   Below the token block are explicit dark overrides for the handful of
+   selectors that still use one-off literal colors not backed by any
+   token (status/badge tints, scan-result colors) — disclosed here rather
+   than silently left to look inconsistent under a dark theme.
+   Honesty note: like the rest of this task, unverified in a real browser
+   (no browser in this sandbox — see docs/TESTING.md); contrast ratios
+   below are chosen to target WCAG AA (4.5:1 for body text) by calculation,
+   not measured against a live render. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pv-bg: #0f1115;
+    --pv-surface: #1a1d23;
+    --pv-surface-alt: #23272f;
+    --pv-surface-subtle: #1e2128;
+
+    --pv-primary: #5b9df9;
+    --pv-primary-hover: #3b82f6;
+    --pv-primary-soft: #1e3a5f;
+    --pv-on-primary: #0b1220;
+
+    --pv-secondary: #b6c2d9;
+    --pv-secondary-container: #2b3340;
+
+    --pv-on-surface: #e5e9f0;
+    --pv-on-surface-variant: #a3adc2;
+    --pv-on-surface-subtle: #6b7688;
+
+    --pv-border: #2b3340;
+    --pv-border-variant: #3a4353;
+
+    --pv-error: #f87171;
+    --pv-error-container: #4c1d1d;
+    --pv-on-error-container: #fecaca;
+
+    --pv-success: #4ade80;
+    --pv-success-bg: #14532d;
+
+    --pv-warning: #fbbf24;
+    --pv-warning-bg: #4a3510;
+
+    --pv-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --pv-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+    --pv-shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.45), 0 4px 6px -4px rgba(0, 0, 0, 0.25);
+  }
+
+  /* One-off literal colors not backed by a design token (see header comment). */
+  .pv-status-dot.active {
+    background-color: #fbbf24;
+  }
+
+  .pv-msg-user {
+    background-color: #1e293b;
+    border-color: #334155;
+  }
+
+  .pv-msg-suggestion {
+    background: linear-gradient(135deg, #1a2332, #161b24);
+    border-color: #2c3b52;
+  }
+
+  .pv-msg-suggestion-text {
+    color: #dbe4f3;
+  }
+
+  .pv-scan-pass { color: #4ade80 !important; }
+  .pv-scan-fail { color: #f87171 !important; }
+  .pv-scan-warn { color: #fbbf24 !important; }
+}
+
+/* ---------- On-device model status banner (popup.js renderLocalModelStatus) ---------- */
+.pv-model-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 6px 12px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--pv-border);
+  background-color: var(--pv-surface-alt);
+  color: var(--pv-on-surface);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.pv-model-status[hidden] { display: none; }
+.pv-model-status .material-symbols-outlined { font-size: 18px; color: var(--pv-primary); }
+.pv-model-status-body { flex: 1; min-width: 0; }
+.pv-model-progress {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--pv-border);
+  overflow: hidden;
+}
+.pv-model-progress-bar {
+  height: 100%;
+  width: 0;
+  background-color: var(--pv-primary);
+  transition: width 0.3s ease;
+}
+.pv-model-status.is-ready { border-color: var(--pv-success); }
+.pv-model-status.is-ready .material-symbols-outlined { color: var(--pv-success); }
+.pv-model-status.is-error { border-color: var(--pv-error); }
+.pv-model-status.is-error .material-symbols-outlined { color: var(--pv-error); }
+.pv-model-status.is-error .pv-model-progress { display: none; }
+
+
+/* ---------- Before / After redaction panel (popup.js renderBeforeAfter) ---------- */
+.pv-ba-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--pv-border);
+}
+.pv-ba-btn {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: var(--pv-radius-sm);
+  border: 1px solid var(--pv-border);
+  background-color: var(--pv-surface);
+  color: var(--pv-on-surface);
+  cursor: pointer;
+}
+.pv-ba-btn.active {
+  background-color: var(--pv-primary-soft);
+  border-color: var(--pv-primary);
+  color: var(--pv-primary);
+  font-weight: 600;
+}
+.pv-ba-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pv-ba-btn:focus-visible { outline: 2px solid var(--pv-primary); outline-offset: 1px; }
+.pv-ba-summary {
+  margin: 0;
+  padding: 6px 8px 0;
+  font-size: 11.5px;
+  color: var(--pv-on-surface-variant);
+}
+.pv-ba-stage { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 6px; }
+.pv-ba-stage[data-view="side"] { grid-template-columns: 1fr 1fr; }
+/* In a narrow side panel, stack BEFORE under AFTER so each stays legible. */
+@media (max-width: 520px) {
+  .pv-ba-stage[data-view="side"] { grid-template-columns: 1fr; }
+}
+.pv-ba-figure { margin: 0; }
+.pv-ba-figure[hidden] { display: none; }
+.pv-ba-figure figcaption {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--pv-on-surface-variant);
+  text-align: center;
+  padding-top: 3px;
+}
+.pv-ba-note { margin: 0; padding: 0 8px 8px; }
+.pv-ba-key { display: inline-block; padding: 0 5px; border-radius: 3px; border: 2px solid; font-size: 10px; margin-right: 3px; }
+.pv-ba-key-text { border-color: #ef4444; }
+.pv-ba-key-face { border-color: #f59e0b; }
+.pv-ba-key-id { border-color: #a855f7; }
+
+
+/* ---------- Privacy Proof: "at a glance" hero (popup.js renderProofHero) ---------- */
+.pv-proof-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--pv-primary);
+  border-radius: var(--pv-radius);
+  background-color: var(--pv-primary-soft);
+}
+.pv-hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-radius: var(--pv-radius-sm);
+  background-color: var(--pv-surface);
+  border: 1px solid var(--pv-border);
+  min-width: 0;
+}
+.pv-hero-val { font-size: 20px; font-weight: 700; color: var(--pv-primary); line-height: 1.2; overflow-wrap: anywhere; }
+.pv-hero-val.is-good { color: var(--pv-success); }
+.pv-hero-val.is-warn { color: var(--pv-warning); }
+.pv-hero-lbl { font-size: 11px; color: var(--pv-on-surface); font-weight: 600; }
+.pv-hero-sub { font-size: 10.5px; color: var(--pv-on-surface-variant); overflow-wrap: anywhere; }
+.pv-hero-steps {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  padding-left: 18px;
+  font-size: 11.5px;
+  color: var(--pv-on-surface);
+  line-height: 1.5;
+}
+
+/* ---------- Before/After extras ---------- */
+.pv-ba-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 8px 6px; }
+.pv-ba-figure canvas { cursor: zoom-in; }
+
+.pv-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(2, 6, 23, 0.92);
+}
+.pv-lightbox[hidden] { display: none; }
+.pv-lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pv-lightbox-body { flex: 1; overflow: auto; padding: 0 10px 10px; }
+.pv-lightbox-body canvas { display: block; max-width: none; }
+
+/* ---------- Sensitive Information Detected table (popup.js renderSensitiveList) ---------- */
+.pv-pii-table { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.pv-pii-row {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--pv-border);
+  border-radius: var(--pv-radius-sm);
+  background-color: var(--pv-surface);
+  font-size: 12px;
+}
+.pv-pii-type {
+  justify-self: start;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--pv-on-error-container);
+  background-color: var(--pv-error-container);
+  overflow-wrap: anywhere;
+}
+.pv-pii-masked { font-family: var(--pv-font-mono); font-size: 11.5px; color: var(--pv-on-surface); overflow-wrap: anywhere; }
+.pv-pii-conf { font-size: 10.5px; color: var(--pv-on-surface-variant); white-space: nowrap; }
+.pv-pii-empty { font-size: 12px; color: var(--pv-on-surface-variant); padding: 6px 2px; }
+
+
+/* ---------- Full-page capture + whole-page scan ---------- */
+.pv-ba-progress {
+  margin: 0;
+  padding: 4px 8px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pv-primary);
+}
+.pv-ba-progress[hidden] { display: none; }
+.pv-pii-scope {
+  margin: 8px 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--pv-on-surface);
+}
+.pv-pii-page { margin-top: 6px; border-top: 1px dashed var(--pv-border); padding-top: 4px; }
+.pv-pii-page[hidden] { display: none; }
+.pv-pii-where {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--pv-border);
+  color: var(--pv-on-surface-variant);
+  white-space: nowrap;
+}
+.pv-pii-where.is-offscreen { color: var(--pv-warning); border-color: var(--pv-warning); }
+/* A full-page capture can be many screens tall: keep each image in its own
+   scroll box instead of stretching the whole tab. Click enlarges it. */
+.pv-ba-figure .pv-canvas-container { max-height: 70vh; overflow-y: auto; align-items: flex-start; }

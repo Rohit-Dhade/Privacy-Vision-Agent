@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureKYC Portal — Identity Verification (DEMO FIXTURE — NOT REAL)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 32px 16px;
+      color: #172033;
+    }
+    .demo-banner {
+      max-width: 760px;
+      margin: 0 auto 18px;
+      background: #fff3cd;
+      border: 2px solid #e8a33d;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #7a4c00;
+      text-align: center;
+    }
+    .container {
+      max-width: 760px;
+      margin: auto;
+      background: white;
+      padding: 28px;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    }
+    h1 { margin-top: 0; font-size: 20px; }
+    .notice {
+      background: #eef6ff;
+      border-left: 4px solid #2878d8;
+      padding: 12px 14px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    fieldset {
+      border: 1px solid #d7ddea;
+      border-radius: 10px;
+      margin: 18px 0;
+      padding: 18px;
+    }
+    legend { font-weight: 700; padding: 0 8px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .full { grid-column: 1 / -1; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 11px;
+      border: 1px solid #bcc6d8;
+      border-radius: 7px;
+      font-size: 15px;
+    }
+    button.submit-btn {
+      margin-top: 18px;
+      width: 100%;
+      padding: 13px;
+      background: #2878d8;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .fixture-footer {
+      max-width: 760px;
+      margin: 18px auto 0;
+      font-size: 12px;
+      color: #8a5300;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="demo-banner">
+    ⚠️ DEMO FIXTURE — this is a fictional test page for demonstrating Privacy-Vision-Agent's
+    pre-autofill trust/phishing gate. It is not affiliated with any real bank, UIDAI, or
+    government body. Do not enter real personal data here.
+  </div>
+
+  <div class="container">
+    <h1>SecureKYC Portal — Identity Verification</h1>
+    <div class="notice">
+      Complete the fields below to verify your identity and continue.
+    </div>
+
+    <!--
+      Deliberately points at a different domain than this page is served
+      from, and combines password + Aadhaar + PAN + card fields on one
+      form — the two independent triggers for agent/trustGate.js:
+        1. Form action domain != page domain  -> BLOCK
+        2. password + government-ID + financial fields on one form -> BLOCK
+      Serve this over plain HTTP (e.g. `python3 -m http.server` from
+      test-pages/) rather than file:// so the page has a real hostname —
+      the domain-mismatch check needs a non-empty page domain to compare
+      against the form's target domain.
+    -->
+    <form action="https://securekyc-verification-portal.example-test-domain.com/submit" method="POST">
+      <fieldset>
+        <legend>Identity Details</legend>
+        <div class="grid">
+          <div class="full">
+            <label for="fullName">Full Name</label>
+            <input type="text" id="fullName" name="fullName" placeholder="As per government ID" />
+          </div>
+          <div>
+            <label for="aadhaar">Aadhaar Number</label>
+            <input type="text" id="aadhaar" name="aadhaar" placeholder="12-digit Aadhaar number" />
+          </div>
+          <div>
+            <label for="pan">PAN Number</label>
+            <input type="text" id="pan" name="pan" placeholder="10-character PAN" />
+          </div>
+          <div>
+            <label for="mobile">Mobile Number</label>
+            <input type="tel" id="mobile" name="mobile" placeholder="10-digit mobile number" />
+          </div>
+          <div>
+            <label for="cardNumber">Card Number</label>
+            <input type="text" id="cardNumber" name="cardNumber" placeholder="16-digit card number" />
+          </div>
+          <div class="full">
+            <label for="accountPassword">Account Password</label>
+            <input type="password" id="accountPassword" name="accountPassword" placeholder="Your portal password" />
+          </div>
+        </div>
+      </fieldset>
+
+      <button type="submit" class="submit-btn">Verify &amp; Continue</button>
+    </form>
+  </div>
+
+  <p class="fixture-footer">
+    Fixture file: phishing-demo-fixture.html — part of Privacy-Vision-Agent's test-pages/, used only to
+    exercise agent/trustGate.js locally. Safe to inspect; submits nowhere real.
+  </p>
+
+</body>
+</html>

@@ -8,6 +8,80 @@
  * JS context back to the extension's background/popup contexts.
  */
 (function (root) {
+  /**
+   * Where this frame sits inside the TOP-LEVEL viewport, which is the
+   * coordinate space the screenshot is in.
+   *
+   * This exists because of a measured privacy failure. Content scripts ran
+   * only in the top frame, so a card number inside a payment iframe — the
+   * normal arrangement on real checkouts; Stripe Elements and Razorpay both
+   * work this way — was never detected and never redacted, while being
+   * painted into the screenshot that gets transmitted.
+   *
+   * Detecting it is only half the fix. A box found at (12, 30) inside a
+   * frame positioned at (420, 644) must be redacted at (432, 674), or the
+   * black rectangle lands somewhere harmless and the number stays readable.
+   *
+   * Offsets accumulate up the frame chain while each ancestor is
+   * same-origin. A cross-origin boundary makes `frameElement` throw, and at
+   * that point the frame genuinely cannot know where it is on screen — so it
+   * says so, and the merge step falls back to redacting the whole frame
+   * rectangle, which the PARENT can always measure. Coarse, but never wrong
+   * in the direction that leaks.
+   */
+  function computeFrameOffset() {
+    if (window === window.top) {
+      return { isSubframe: false, offsetX: 0, offsetY: 0, offsetKnown: true };
+    }
+    let offsetX = 0;
+    let offsetY = 0;
+    let win = window;
+    let guard = 0;
+    try {
+      while (win !== window.top && guard++ < 16) {
+        const fe = win.frameElement; // throws when the parent is cross-origin
+        if (!fe) {
+          return { isSubframe: true, offsetX: 0, offsetY: 0, offsetKnown: false,
+                   reason: 'frameElement unavailable' };
+        }
+        const r = fe.getBoundingClientRect();
+        offsetX += r.left;
+        offsetY += r.top;
+        win = win.parent;
+      }
+      return { isSubframe: true, offsetX: Math.round(offsetX), offsetY: Math.round(offsetY),
+               offsetKnown: true };
+    } catch (e) {
+      return { isSubframe: true, offsetX: 0, offsetY: 0, offsetKnown: false,
+               reason: 'cross-origin ancestor' };
+    }
+  }
+
+  /**
+   * Rects of this frame's own child iframes, in this frame's coordinates.
+   * The top frame's list is what makes the cross-origin fallback possible: a
+   * parent can always measure where a child frame is, even when the child
+   * cannot measure itself.
+   */
+  function collectChildFrameRects(viewportWidth, viewportHeight) {
+    const out = [];
+    try {
+      document.querySelectorAll('iframe,frame').forEach((f) => {
+        const r = f.getBoundingClientRect();
+        if (!root.__BA_Geometry.rectIntersectsViewport(r, viewportWidth, viewportHeight)) return;
+        let sameOrigin = false;
+        try { sameOrigin = !!f.contentDocument; } catch (e) { sameOrigin = false; }
+        out.push({
+          bbox: { x: Math.round(r.left), y: Math.round(r.top),
+                  width: Math.round(r.width), height: Math.round(r.height) },
+          sameOrigin,
+          src: (f.getAttribute('src') || '').slice(0, 200)
+        });
+      });
+    } catch (e) { /* best effort */ }
+    return out;
+  }
+
   function buildViewport() {
     return {
       width: window.innerWidth,
@@ -100,6 +174,14 @@
       viewport.height
     );
 
+    // ID/document image redaction (e.g. an Aadhaar/PAN card photo preview
+    // on a KYC form). piiDetector only scans text nodes, so a photographed
+    // ID rendered as <img>/<canvas> would otherwise pass through
+    // untouched. See content/idImageDetector.js for the detection heuristics.
+    const idImageRegions = root.__BA_IdImageDetector
+      ? root.__BA_IdImageDetector.detectIdImageRegions(viewport.width, viewport.height)
+      : [];
+
     // Also flag interactive elements whose href carries sensitive query params.
     for (const el of elements) {
       if (el.href) {
@@ -132,6 +214,7 @@
         isActuallyFilled = el.value != null && el.value !== '' && el.value !== '[REDACTED]';
       }
 
+      if (!isActuallyFilled && el.valuePresent === true) isActuallyFilled = true; // password-type fields: presence only
       el.hasValue = isActuallyFilled;
 
       if (isActuallyFilled && el.value != null && el.value !== '' && el.value !== 'checked') {
@@ -175,6 +258,18 @@
     const loadingState = extractLoadingState();
     const forms = extractFormsSummary(elements);
 
+    // Local vision fallback, v0 (claude/v06-local-vision-fallback-scope.md):
+    // flag icon-only, unlabeled interactive elements so popup.js can run a
+    // cheap classical-CV pass against the already-captured screenshot and
+    // enrich the DOM skeleton with an inferredLabel before it's ever built.
+    // Near-zero cost on ordinary pages — see iconCandidateDetector.js's own
+    // header for why this returns empty almost everywhere.
+    const iconCandidates = root.__BA_IconCandidateDetector
+      ? root.__BA_IconCandidateDetector.findUnlabeledIconCandidates(elements)
+      : [];
+
+    const frame = computeFrameOffset();
+
     const result = {
       timestamp: Date.now(),
       url: location.href,
@@ -182,6 +277,13 @@
       elements,
       visibleText: visibleTextSummary,
       sensitiveItems: cleanSensitiveItems,
+      idImageRegions,
+      iconCandidates,
+      // Frame bookkeeping. Every bbox above is in THIS frame's coordinates;
+      // the merge step in background/service-worker.js translates them into
+      // top-level (screenshot) space using this.
+      frame,
+      childFrames: collectChildFrameRects(viewport.width, viewport.height),
       pageContext: {
         activeModal,
         alerts,
@@ -190,7 +292,8 @@
       },
       counts: {
         interactiveElements: elements.length,
-        sensitiveItems: cleanSensitiveItems.length
+        sensitiveItems: cleanSensitiveItems.length,
+        idImageRegions: idImageRegions.length
       }
     };
 
