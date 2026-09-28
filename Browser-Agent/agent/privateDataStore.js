@@ -141,7 +141,7 @@
         address: ['home_address', 'residential_address', 'street_address'],
         street_address: ['address', 'home_address'],
         zip: ['pincode', 'pin_code', 'postal_code', 'postcode', 'zipcode', 'zip_code'],
-        name: ['full_name', 'fullname'],
+        name: ['full_name', 'fullname', 'full name'],
         phone: ['mobile', 'mobile_number', 'phone_number', 'mobile_phone'],
         dob: ['date_of_birth', 'birthdate', 'birth_date'],
         email: ['email_address', 'e-mail'],
@@ -154,8 +154,18 @@
       if (!key || typeof key !== 'string') return null;
       const store = await this._readStore();
       for (const candidate of PrivateDataStore.keyCandidates(key)) {
-        if (Object.prototype.hasOwnProperty.call(store, candidate) && PrivateDataStore.isValueAvailable(store[candidate])) {
-          return { key: candidate, value: store[candidate] };
+        // Try exact candidate, plus space↔underscore variants so that
+        // user-saved "full name" matches field-matcher key "full_name"
+        // and vice versa.
+        const variants = new Set([
+          candidate,
+          candidate.replace(/\s+/g, '_'),   // "full name"  → "full_name"
+          candidate.replace(/_+/g, ' '),     // "full_name"  → "full name"
+        ]);
+        for (const v of variants) {
+          if (Object.prototype.hasOwnProperty.call(store, v) && PrivateDataStore.isValueAvailable(store[v])) {
+            return { key: v, value: store[v] };
+          }
         }
       }
       return null;
