@@ -13,159 +13,625 @@
 </head>
 <body class="pv-body">
   <div class="pv-container">
-    <!-- TopAppBar Header -->
+    <!-- Header -->
     <header class="pv-header">
       <div class="pv-brand">
-        <span class="material-symbols-outlined pv-shield-icon">shield</span>
-        <h1 class="pv-title">Privacy Vision Agent</h1>
+        <span class="material-symbols-outlined pv-shield-icon" aria-hidden="true">shield</span>
+        <h1 class="pv-title" id="headerTitle">Privacy Vision Agent</h1>
       </div>
       <div class="pv-header-actions">
-        <button id="settingsBtn" class="pv-icon-btn" title="Backend settings" aria-label="Backend settings">
-          <span class="material-symbols-outlined">settings</span>
+        <button id="settingsBtn" class="pv-icon-btn" title="Settings & Local Data" aria-label="Settings">
+          <span class="material-symbols-outlined" id="settingsBtnIcon" aria-hidden="true">settings</span>
         </button>
         <button id="closeBtn" class="pv-icon-btn pv-close-btn" title="Close" aria-label="Close">
-          <span class="material-symbols-outlined">close</span>
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
         </button>
       </div>
     </header>
 
-    <!-- Sub-header Status Indicator Bar -->
-    <div class="pv-status-bar">
+    <!-- Status Indicator Bar -->
+    <div class="pv-status-bar" id="statusBar">
       <div class="pv-status-indicator">
         <div id="statusDot" class="pv-status-dot"></div>
         <span id="statusBarText" class="pv-status-text">LOCAL SCAN ACTIVE</span>
       </div>
     </div>
 
-    <!-- Main Scrollable Content -->
-    <main class="pv-main">
-      <!-- Settings Panel (Collapsible) -->
-      <section id="settingsPanel" class="pv-card pv-settings-card" hidden>
-        <div class="pv-card-header">
-          <span class="material-symbols-outlined">tune</span>
-          <span class="pv-card-title">Backend Configuration</span>
-        </div>
-        <div class="pv-card-body">
-          <label class="pv-label" for="backendUrlInput">Backend Endpoint</label>
-          <input id="backendUrlInput" type="text" class="pv-input" placeholder="http://localhost:8787/api/agent/decide" />
-          <div class="pv-settings-row">
-            <button id="saveBackendBtn" class="pv-btn pv-btn-secondary">Save Configuration</button>
-            <span id="backendSavedNote" class="pv-status-note" hidden>Saved.</span>
+    <!-- On-device model status (agent/webllmEngine.js): one banner, updated
+         in place by popup.js's renderLocalModelStatus(). Hidden unless the
+         model is loading, just became ready, or failed. Shown above the
+         tabs so it is visible from both. -->
+    <div id="localModelStatus" class="pv-model-status" role="status" aria-live="polite" hidden>
+      <span class="material-symbols-outlined" aria-hidden="true">memory</span>
+      <div class="pv-model-status-body">
+        <span id="localModelStatusText" class="pv-model-status-text"></span>
+        <div class="pv-model-progress" aria-hidden="true"><div id="localModelProgressBar" class="pv-model-progress-bar"></div></div>
+      </div>
+    </div>
+
+    <!-- Primary View Tabs: Agent (task execution) vs Privacy Proof
+         (judge/auditor-facing evidence of what actually happened -- Privacy
+         Receipt, Live Evaluation Metrics, Cryptographic Redaction Proof,
+         the redacted screenshot, and exactly what PII was detected). Both
+         tabs read the same live DOM elements; this is presentation only,
+         nothing computed differently between them -- see popup.js's
+         switchTab(). Hidden automatically while Settings is open, same as
+         both view panels -- see toggleSettingsView(). -->
+    <nav class="pv-tab-bar" id="tabBar" role="tablist" aria-label="Primary views">
+      <button type="button" class="pv-tab-btn active" id="tabBtnAgent" role="tab" aria-selected="true" aria-controls="agentView">
+        <span class="material-symbols-outlined" aria-hidden="true">smart_toy</span> Agent
+      </button>
+      <button type="button" class="pv-tab-btn" id="tabBtnProof" role="tab" aria-selected="false" aria-controls="proofView">
+        <span class="material-symbols-outlined" aria-hidden="true">verified_user</span> Privacy Proof
+      </button>
+    </nav>
+
+    <!-- Agent Main View -->
+    <div id="agentView" class="pv-agent-view">
+      <!-- Main Scrollable Content Area -->
+      <main class="pv-main" id="mainScrollArea">
+        <!-- Welcome / Empty State (Appears above composer when no messages exist) -->
+        <div id="welcomeState" class="pv-welcome-state">
+          <div class="pv-welcome-icon-wrap">
+            <span class="material-symbols-outlined pv-welcome-shield" aria-hidden="true">shield</span>
           </div>
-          <p class="pv-hint">
-            Only the redacted screenshot and a sanitized element list are sent here — never raw PII, never the original screenshot.
+          <h2 class="pv-welcome-title">How can I help you?</h2>
+          <p class="pv-welcome-subtitle">
+            Describe a task and I'll safely analyze the page with local PII protection and assist you.
           </p>
         </div>
+
+        <!-- Saved Tasks / Resume (agent/contextManager.js, v25 Task 1.3):
+             cross-task checkpoints, listed here so they're visible even
+             before a new task starts, not buried in the post-analysis
+             Page Summary panel below. -->
+        <details id="savedTasksPanel" class="pv-card pv-details-card">
+          <summary class="pv-details-summary">
+            <div class="pv-summary-title-wrapper">
+              <span class="material-symbols-outlined" aria-hidden="true">history</span>
+              <span>Saved Tasks</span>
+            </div>
+            <span class="material-symbols-outlined pv-chevron" aria-hidden="true">expand_more</span>
+          </summary>
+          <div class="pv-details-content">
+            <div id="savedTasksList" class="pv-list"></div>
+            <p id="savedTasksStorageNote" class="pv-hint pv-no-margin"></p>
+          </div>
+        </details>
+
+        <!-- Interactive Feed / Chat Log -->
+        <section id="chatLog" class="pv-chat-log" aria-live="polite"></section>
+
+        <!-- Page Analysis & Redaction Summary (Collapsible Panel) -->
+        <details id="detailsPanel" class="pv-card pv-details-card" hidden>
+          <summary class="pv-details-summary">
+            <div class="pv-summary-title-wrapper">
+              <span class="material-symbols-outlined" aria-hidden="true">analytics</span>
+              <span>Page Summary & Redaction Details</span>
+            </div>
+            <span class="material-symbols-outlined pv-chevron" aria-hidden="true">expand_more</span>
+          </summary>
+
+          <div class="pv-details-content">
+            <!-- Summary Metrics -->
+            <div class="pv-metrics-grid">
+              <div class="pv-metric-box">
+                <strong id="countElements" class="pv-metric-val">0</strong>
+                <span class="pv-metric-lbl">interactive elements</span>
+              </div>
+              <div class="pv-metric-box">
+                <strong id="countSensitive" class="pv-metric-val">0</strong>
+                <span class="pv-metric-lbl">sensitive items</span>
+              </div>
+            </div>
+
+            <!-- Interactive Elements List -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined" aria-hidden="true">ads_click</span> Interactive Elements</summary>
+              <div id="elementsList" class="pv-list"></div>
+              <pre id="elementsJson" class="pv-json-code"></pre>
+            </details>
+
+            <!-- Visible Text -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined" aria-hidden="true">description</span> Visible Text</summary>
+              <pre id="visibleTextJson" class="pv-json-code"></pre>
+            </details>
+
+            <!-- Compliance Signals: local, pattern-based GDPR/CCPA/HIPAA
+                 signals on THIS page — never a legal compliance verdict. -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined" aria-hidden="true">gavel</span> Compliance Signals (GDPR / CCPA / HIPAA)</summary>
+              <div class="pv-metrics-grid">
+                <div class="pv-metric-box">
+                  <strong id="complianceScore" class="pv-metric-val">—</strong>
+                  <span class="pv-metric-lbl">signal score (100 = no signals found)</span>
+                </div>
+              </div>
+              <div id="complianceViolationsList" class="pv-list"></div>
+              <p class="pv-hint pv-no-margin">
+                Local pattern-matching over this page's visible text and links only (no network call) — it can tell you whether a cookie-consent banner, privacy-policy link, or similar signal is present on the page in front of you right now. It is not a legal compliance determination for the site as a whole.
+              </p>
+            </details>
+
+            <!-- Agent State -->
+            <details class="pv-subdetails">
+              <summary><span class="material-symbols-outlined" aria-hidden="true">memory</span> Internal Agent State</summary>
+              <div id="agentStateLine" class="pv-mono-line">IDLE</div>
+            </details>
+          </div>
+        </details>
+      </main>
+
+      <!-- Action Required Panel — pinned when user input needed -->
+      <section id="userInputSection" class="pv-action-required-card" hidden>
+        <div class="pv-action-required-header">
+          <div class="pv-action-title-row">
+            <span class="material-symbols-outlined pv-lock-icon" aria-hidden="true">lock</span>
+            <div>
+              <h2 class="pv-card-title">ACTION REQUIRED</h2>
+              <p class="pv-action-subtitle">Secure input needed to proceed.</p>
+            </div>
+          </div>
+        </div>
+        <div id="userInputContainer" class="pv-user-input-container"></div>
       </section>
 
-      <!-- Task Prompt Area -->
-      <section class="pv-card pv-input-card">
-        <div class="pv-input-wrapper">
-          <textarea id="taskInput" class="pv-textarea" rows="2" placeholder="Describe what you'd like help with..."></textarea>
-          <div class="pv-input-actions">
-            <button id="sendBtn" class="pv-btn pv-btn-primary">
-              <span>Send</span>
-              <span class="material-symbols-outlined">send</span>
+      <!-- Compact Input Composer with Integrated Mode Control -->
+      <section id="composerSection" class="pv-composer-section">
+        <div class="pv-composer-box">
+          <textarea id="taskInput" class="pv-composer-textarea" rows="1" placeholder="Describe what you'd like help with..." aria-label="Describe your task"></textarea>
+          
+          <div class="pv-composer-toolbar">
+            <!-- Integrated Mode Dropdown Control -->
+            <div class="pv-mode-dropdown-wrapper">
+              <button id="modeDropdownBtn" type="button" class="pv-mode-dropdown-btn" title="Change execution mode" aria-haspopup="true" aria-expanded="false">
+                <span class="material-symbols-outlined pv-mode-btn-icon" aria-hidden="true">tune</span>
+                <span id="modeDropdownLabel" class="pv-mode-dropdown-label">Assist Me (HITL)</span>
+                <span class="material-symbols-outlined pv-mode-chevron" aria-hidden="true">expand_more</span>
+              </button>
+
+              <!-- Popover Menu for Mode Selection -->
+              <div id="modeMenuPopover" class="pv-mode-popover" hidden>
+                <label class="pv-mode-popover-item active" id="modeOptHitl">
+                  <input type="radio" name="agentMode" value="hitl" id="radioModeHitl" checked />
+                  <div class="pv-mode-popover-text">
+                    <span class="pv-mode-popover-title">Assist Me (HITL)</span>
+                    <span class="pv-mode-popover-desc">Guides you to enter information manually</span>
+                  </div>
+                  <span class="material-symbols-outlined pv-mode-check" aria-hidden="true">check</span>
+                </label>
+                <label class="pv-mode-popover-item" id="modeOptComplete">
+                  <input type="radio" name="agentMode" value="complete" id="radioModeComplete" />
+                  <div class="pv-mode-popover-text">
+                    <span class="pv-mode-popover-title">Complete Automatically</span>
+                    <span class="pv-mode-popover-desc">Auto-fills from local store; asks if missing</span>
+                  </div>
+                  <span class="material-symbols-outlined pv-mode-check" aria-hidden="true">check</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Send Action Button -->
+            <button id="sendBtn" type="button" class="pv-composer-send-btn" title="Send instruction" aria-label="Send">
+              <span class="material-symbols-outlined" aria-hidden="true">send</span>
             </button>
           </div>
         </div>
         <p id="errorLine" class="pv-error-banner" hidden></p>
       </section>
+    </div>
 
-      <!-- Interactive Feed / Chat Log -->
-      <section id="chatLog" class="pv-chat-log" aria-live="polite"></section>
+    <!-- Privacy Proof View -- dedicated screen for showing a judge/auditor
+         verifiable evidence of what this extension actually does with page
+         data, without them having to dig through the Agent tab's technical
+         accordions mid-task. Every element here is the exact same DOM node
+         popup.js already updates live during a run (see the els.receipt*/
+         els.bench*/els.redactionProof*/els.sensitiveList assignments) --
+         moving them into this tab changed where they render, not what
+         populates them or when. Starts on placeholder/zeroed values (baked
+         into the HTML below) so it's not an empty screen before a task has
+         run -- see switchTab() in popup.js for how tab visibility works. -->
+    <div id="proofView" class="pv-agent-view" hidden>
+      <main class="pv-main" id="proofScrollArea">
+        <p class="pv-hint pv-proof-intro">
+          Evidence of what actually happened on the last task, not a claim to take on trust. Every number and image below comes from the run you just did and updates as the agent works.
+        </p>
 
-
-      <!-- Page Analysis & Redaction Summary (Collapsible Panel) -->
-      <details id="detailsPanel" class="pv-card pv-details-card" hidden>
-        <summary class="pv-details-summary">
-          <div class="pv-summary-title-wrapper">
-            <span class="material-symbols-outlined">analytics</span>
-            <span>Page Summary & Redaction Details</span>
+        <!-- Proof at a glance: the four facts a judge should see first.
+             Filled by popup.js renderProofHero() on every agent step. -->
+        <section class="pv-proof-hero" id="proofHero" aria-label="Proof at a glance">
+          <div class="pv-hero-stat">
+            <strong id="heroRedacted" class="pv-hero-val">—</strong>
+            <span class="pv-hero-lbl">sensitive items blacked out on this device</span>
+            <span id="heroRedactedDetail" class="pv-hero-sub"></span>
           </div>
-          <span class="material-symbols-outlined pv-chevron">expand_more</span>
-        </summary>
-
-        <div class="pv-details-content">
-          <!-- Summary Metrics -->
-          <div class="pv-metrics-grid">
-            <div class="pv-metric-box">
-              <strong id="countElements" class="pv-metric-val">0</strong>
-              <span class="pv-metric-lbl">interactive elements</span>
-            </div>
-            <div class="pv-metric-box">
-              <strong id="countSensitive" class="pv-metric-val">0</strong>
-              <span class="pv-metric-lbl">sensitive items</span>
-            </div>
+          <div class="pv-hero-stat">
+            <strong id="heroBytes" class="pv-hero-val">—</strong>
+            <span class="pv-hero-lbl">sent off this device this task</span>
+            <span id="heroBytesDetail" class="pv-hero-sub"></span>
           </div>
-
-          <!-- Screenshot Canvas Panel -->
-          <div class="pv-subpanel">
-            <div class="pv-subpanel-header">
-              <span class="material-symbols-outlined">visibility_off</span>
-              <span class="pv-subpanel-title">Redacted Screenshot Preview</span>
-            </div>
-            <div class="pv-canvas-container">
-              <canvas id="screenshotCanvas" class="pv-screenshot-canvas"></canvas>
-            </div>
+          <div class="pv-hero-stat">
+            <strong id="heroTiles" class="pv-hero-val">—</strong>
+            <span class="pv-hero-lbl">redacted tiles in the signed proof</span>
+            <span id="heroTilesDetail" class="pv-hero-sub"></span>
           </div>
+          <div class="pv-hero-stat">
+            <strong id="heroMode" class="pv-hero-val">—</strong>
+            <span class="pv-hero-lbl">Privacy Dial</span>
+            <span id="heroModeDetail" class="pv-hero-sub"></span>
+          </div>
+          <ol class="pv-hero-steps">
+            <li>Look at <b>Before / After</b>: the first image is what can leave, the second is the original with every hidden region outlined.</li>
+            <li>Check <b>Sensitive Information Detected</b>: each outline is one of these, shown masked.</li>
+            <li>Download the <b>Redaction Proof</b>, open the verifier, press Verify, then press Tamper test to watch it fail.</li>
+          </ol>
+        </section>
 
-          <!-- Interactive Elements List -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">ads_click</span> Interactive Elements</summary>
-            <div id="elementsList" class="pv-list"></div>
-            <pre id="elementsJson" class="pv-json-code"></pre>
-          </details>
-
-          <!-- Visible Text -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">description</span> Visible Text</summary>
-            <pre id="visibleTextJson" class="pv-json-code"></pre>
-          </details>
-
-          <!-- Sensitive Information -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">security</span> Sensitive Information Detected</summary>
-            <div id="sensitiveList" class="pv-list"></div>
-          </details>
-
-          <!-- Agent State -->
-          <details class="pv-subdetails">
-            <summary><span class="material-symbols-outlined">memory</span> Internal Agent State</summary>
-            <div id="agentStateLine" class="pv-mono-line">IDLE</div>
-          </details>
+        <!-- Before / After Redaction. "Redacted" is exactly the image that
+             can leave the device. "Original" is the same capture BEFORE
+             redaction, with every redacted region outlined — kept only in
+             this panel's memory for the latest step, never sent, never
+             saved, hidden again automatically. See popup.js
+             renderBeforeAfter(). -->
+        <div class="pv-subpanel" id="beforeAfterPanel">
+          <div class="pv-subpanel-header">
+            <span class="material-symbols-outlined" aria-hidden="true">compare</span>
+            <span class="pv-subpanel-title">Before / After Redaction</span>
+          </div>
+          <div class="pv-ba-toolbar" role="tablist" aria-label="Screenshot view">
+            <button type="button" class="pv-ba-btn active" id="baBtnRedacted" role="tab" aria-selected="true">Redacted (what can leave)</button>
+            <button type="button" class="pv-ba-btn" id="baBtnOriginal" role="tab" aria-selected="false" disabled>Original + outlines (local only)</button>
+            <button type="button" class="pv-ba-btn" id="baBtnSide" role="tab" aria-selected="false" disabled>Side by side</button>
+          </div>
+          <p id="baSummary" class="pv-ba-summary">Run a task to capture a screenshot, or press "Capture full page".</p>
+          <p id="baProgress" class="pv-ba-progress" role="status" aria-live="polite" hidden></p>
+          <div class="pv-ba-stage" id="baStage" data-view="redacted">
+            <figure class="pv-ba-figure" id="baFigureRedacted">
+              <div class="pv-canvas-container">
+                <canvas id="screenshotCanvas" class="pv-screenshot-canvas"></canvas>
+              </div>
+              <figcaption>AFTER — redacted</figcaption>
+            </figure>
+            <figure class="pv-ba-figure" id="baFigureOriginal" hidden>
+              <div class="pv-canvas-container">
+                <canvas id="originalCanvas" class="pv-screenshot-canvas"></canvas>
+              </div>
+              <figcaption>BEFORE — original, redacted regions outlined</figcaption>
+            </figure>
+          </div>
+          <div class="pv-ba-actions">
+            <button type="button" class="pv-btn pv-btn-primary" id="baCaptureFullPage" title="Scrolls the page one screen at a time, redacts every screen on this device, and joins them into one image. Your scroll position is restored afterwards.">
+              <span class="material-symbols-outlined" aria-hidden="true">height</span> Capture full page
+            </button>
+            <button type="button" class="pv-btn pv-btn-secondary" id="baDownloadRedacted" disabled>
+              <span class="material-symbols-outlined" aria-hidden="true">download</span> Download redacted PNG
+            </button>
+            <span class="pv-hint pv-no-margin">Click an image to enlarge it.</span>
+          </div>
+          <p class="pv-hint pv-ba-note">
+            The original is shown only here, from memory, for the latest step. It is never sent anywhere, never written to disk, and is hidden again after 60 seconds. Outline colours: <span class="pv-ba-key pv-ba-key-text">text PII</span> <span class="pv-ba-key pv-ba-key-face">face</span> <span class="pv-ba-key pv-ba-key-id">ID document</span>
+          </p>
         </div>
-      </details>
-    </main>
 
-    <!-- Action Required Panel — pinned above footer, never scrolls away -->
-    <section id="userInputSection" class="pv-action-required-card" hidden>
-      <div class="pv-action-required-header">
-        <div class="pv-action-title-row">
-          <span class="material-symbols-outlined pv-lock-icon">lock</span>
-          <div>
-            <h2 class="pv-card-title">ACTION REQUIRED</h2>
-            <p class="pv-action-subtitle">Secure input needed to proceed.</p>
+        <!-- Sensitive Information: paired with the screenshot above so a
+             judge can match each black box to exactly what type of PII it
+             covered, without seeing the actual value. Open by default here
+             (unlike its old spot in the Agent tab's accordion) since this
+             is now flagship evidence, not a debug detail. -->
+        <details class="pv-subdetails" open>
+          <summary><span class="material-symbols-outlined" aria-hidden="true">security</span> Sensitive Information Detected</summary>
+          <p class="pv-hint pv-no-margin">Found on the page by the on-device detectors (checksum-validated patterns, NER, face and ID-image detection). Only a masked form is ever shown; the real values stay on this page.</p>
+          <p class="pv-pii-scope" id="sensitiveListScope">On the captured screenshot (each one is a black box above)</p>
+          <div id="sensitiveList" class="pv-pii-table" role="table" aria-label="Sensitive information detected"></div>
+          <div id="wholePageScanBlock" class="pv-pii-page" hidden>
+            <p class="pv-pii-scope" id="wholePageScanTitle">Whole page (text scan)</p>
+            <p class="pv-hint pv-no-margin">Read from the page itself, including parts you haven't scrolled to. Nothing is captured or sent for these; when the agent scrolls to one, it is blacked out in that step's screenshot before anything can leave.</p>
+            <div id="wholePageSensitiveList" class="pv-pii-table" role="table" aria-label="Sensitive information on the whole page"></div>
+          </div>
+        </details>
+
+        <!-- Cryptographic Redaction Proof: "here's a proof, check it
+             yourself" instead of "trust us, we redacted it". -->
+        <details class="pv-subdetails pv-receipt-details" id="redactionProofDetails" open>
+          <summary><span class="material-symbols-outlined" aria-hidden="true">verified_user</span> Cryptographic Redaction Proof</summary>
+          <div class="pv-receipt-grid">
+            <div class="pv-metric-box">
+              <strong id="redactionProofRoot" class="pv-metric-val">—</strong>
+              <span class="pv-metric-lbl">Merkle root (this step's screenshot commitment)</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="redactionProofTiles" class="pv-metric-val">—</strong>
+              <span class="pv-metric-lbl">redacted tiles proven, without revealing their content</span>
+            </div>
+          </div>
+          <p class="pv-hint pv-no-margin">
+            Before redaction, the raw screenshot is hashed tile-by-tile into a signed Merkle tree. This proof lets anyone confirm the redacted regions were genuinely part of the original image — without ever seeing what was in them. Download it and check it independently, fully offline, with the verifier below (no extension needed).
+          </p>
+          <div class="pv-proof-actions">
+            <button id="redactionProofDownloadBtn" class="pv-btn pv-btn-secondary" disabled>
+              <span class="material-symbols-outlined" aria-hidden="true">download</span> Download Redaction Proof (JSON)
+            </button>
+            <a id="redactionProofVerifyLink" class="pv-btn pv-btn-secondary" href="../tools/verify-redaction-proof.html" target="_blank" rel="noopener">
+              <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span> Open Independent Verifier
+            </a>
+          </div>
+        </details>
+
+        <!-- Privacy Receipt: live proof of what actually crossed the network boundary -->
+        <details class="pv-subdetails pv-receipt-details" id="privacyReceiptDetails" open>
+          <summary>
+            <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span> Privacy Receipt — What Left Your Browser
+            <span id="constitutionVersionBadge" class="pv-badge-local" title="The version of CONSTITUTION.md this build follows. If this number changes between builds, a rule about what the agent will or won't do on its own changed too — re-read the constitution before trusting it with anything sensitive.">POLICY v—</span>
+          </summary>
+          <div class="pv-receipt-grid">
+            <div class="pv-metric-box">
+              <strong id="receiptSteps" class="pv-metric-val">0</strong>
+              <span class="pv-metric-lbl">payloads sent</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="receiptPiiMasked" class="pv-metric-val">0</strong>
+              <span class="pv-metric-lbl">PII values masked</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="receiptFaces" class="pv-metric-val">0</strong>
+              <span class="pv-metric-lbl">faces blurred</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="receiptIdImages" class="pv-metric-val">0</strong>
+              <span class="pv-metric-lbl">ID images redacted</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="receiptBytes" class="pv-metric-val">0 B</strong>
+              <span class="pv-metric-lbl">total data sent</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="receiptScanStatus" class="pv-metric-val pv-scan-pass">No scans yet</strong>
+              <span class="pv-metric-lbl">adversarial pre-flight scan</span>
+            </div>
+          </div>
+          <p class="pv-hint pv-no-margin" id="receiptScanNote">
+            Every payload is scanned locally for raw credit card, PAN, Aadhaar and password patterns before it can leave the browser — any match blocks that request entirely.
+          </p>
+          <div class="pv-subpanel" style="margin-top:8px;">
+            <div class="pv-subpanel-header">
+              <span class="material-symbols-outlined" aria-hidden="true">policy</span>
+              <span class="pv-subpanel-title">Exact Payload Sent — Last Step</span>
+            </div>
+            <pre id="privacyReceiptPayload" class="pv-json-code">No requests sent yet.</pre>
+          </div>
+          <div class="pv-subpanel" style="margin-top:8px;">
+            <div class="pv-subpanel-header">
+              <span class="material-symbols-outlined" aria-hidden="true">alt_route</span>
+              <span class="pv-subpanel-title">Local Decision Routing (Hybrid mode)</span>
+            </div>
+            <p class="pv-hint pv-no-margin" id="routingStatsLine">No steps routed yet this task.</p>
+            <p class="pv-hint pv-no-margin">
+              Hybrid mode tries each step locally first — an exact field match (TREE), then a looser local match (HEURISTIC), then the on-device model (LOCAL_LLM) — and only calls the cloud reasoner (CLOUD) when none of those could confidently answer. Cloud-Assisted mode always uses CLOUD directly by design, so it's excluded from this count; Fully Local mode never reaches CLOUD at all.
+            </p>
+          </div>
+        </details>
+
+        <!-- Live Evaluation-Metrics Dashboard: measured proxies for the 5
+             weighted ISRO SIH26171 categories, updated as the agent runs. -->
+        <details class="pv-subdetails pv-receipt-details" id="benchmarkDashboardDetails" open>
+          <summary><span class="material-symbols-outlined" aria-hidden="true">monitoring</span> Live Evaluation Metrics (SIH26171)</summary>
+          <div class="pv-receipt-grid">
+            <div class="pv-metric-box">
+              <strong id="benchActionSuccess" class="pv-metric-val">—</strong>
+              <span class="pv-metric-lbl">visual context accuracy (25%) — action success rate</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="benchDetectionVolume" class="pv-metric-val">0</strong>
+              <span class="pv-metric-lbl">sensitive data detection (20%) — items caught</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="benchRedactionConfirm" class="pv-metric-val">—</strong>
+              <span class="pv-metric-lbl">redaction precision (20%) — OCR-confirmed</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="benchResourceUse" class="pv-metric-val">—</strong>
+              <span class="pv-metric-lbl">client resource utilization (20%)</span>
+            </div>
+            <div class="pv-metric-box">
+              <strong id="benchLatency" class="pv-metric-val">—</strong>
+              <span class="pv-metric-lbl">end-to-end latency (15%)</span>
+            </div>
+          </div>
+          <p class="pv-hint pv-no-margin">
+            Live, measured proxies from this run — not lab-benchmarked recall/precision numbers, which need a labeled dataset. "Action success rate" and OCR-confirmation are real counts from this session; heap/latency are read from the browser's own performance APIs.
+          </p>
+        </details>
+      </main>
+    </div>
+
+    <!-- Full Settings View (Replaces Agent View when Active) -->
+    <section id="settingsPanel" class="pv-settings-view" hidden>
+      <div class="pv-settings-container">
+        <!-- Backend Configuration -->
+        <div class="pv-settings-card">
+          <div class="pv-card-header">
+            <span class="material-symbols-outlined" aria-hidden="true">dns</span>
+            <span class="pv-card-title">Backend Configuration</span>
+          </div>
+          <div class="pv-card-body">
+            <label class="pv-label" for="backendUrlInput">Backend API Endpoint</label>
+            <input id="backendUrlInput" type="text" class="pv-input" placeholder="http://localhost:5000/api/agent/step" />
+            <div class="pv-settings-row">
+              <button id="saveBackendBtn" class="pv-btn pv-btn-primary pv-btn-sm">Save Configuration</button>
+              <span id="backendSavedNote" class="pv-status-note" hidden>Saved.</span>
+            </div>
+            <p class="pv-hint">
+              Only redacted screenshots and sanitized DOM structures are sent here — never raw PII or private store values.
+            </p>
+          </div>
+        </div>
+
+        <!-- Browser Compatibility & Storage (utils/featureDetection.js,
+             utils/opfsManager.js — v25 Tasks 1.2/1.4). Read-only, computed
+             once when Settings opens; never gates anything itself, but
+             names exactly which on-device feature is missing when one is,
+             instead of leaving a silent degraded-fallback unexplained. -->
+        <div class="pv-settings-card">
+          <div class="pv-card-header">
+            <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+            <span class="pv-card-title">Browser Compatibility &amp; Storage</span>
+          </div>
+          <div class="pv-card-body">
+            <div id="featureSupportList" class="pv-list"></div>
+            <p id="opfsQuotaNote" class="pv-hint pv-no-margin"></p>
+          </div>
+        </div>
+
+        <!-- Privacy Dial — explicit, user-controlled trust boundary -->
+        <div class="pv-settings-card">
+          <div class="pv-card-header">
+            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+            <span class="pv-card-title">Privacy Dial</span>
+            <span id="privacyDialBadge" class="pv-badge-local">HYBRID</span>
+          </div>
+          <div class="pv-card-body">
+            <p class="pv-hint pv-no-margin">
+              Choose how much ever leaves this device. This isn't a suggestion the agent tries to honor — Fully Local is enforced by <code>agentBackend.js</code> itself, which refuses to make its one network call while this is selected.
+            </p>
+            <div id="privacyDialOptions" class="pv-dial-options">
+              <label class="pv-mode-popover-item" id="dialOptCloud">
+                <input type="radio" name="privacyDialMode" value="cloud" id="radioDialCloud" />
+                <div class="pv-mode-popover-text">
+                  <span class="pv-mode-popover-title">Cloud-Assisted</span>
+                  <span class="pv-mode-popover-desc">Every step reasoned about by the cloud model. Fastest, most capable.</span>
+                </div>
+                <span class="material-symbols-outlined pv-mode-check" aria-hidden="true">check</span>
+              </label>
+              <label class="pv-mode-popover-item active" id="dialOptHybrid">
+                <input type="radio" name="privacyDialMode" value="hybrid" id="radioDialHybrid" checked />
+                <div class="pv-mode-popover-text">
+                  <span class="pv-mode-popover-title">Hybrid (Recommended)</span>
+                  <span class="pv-mode-popover-desc">Fills what it confidently can from your local store with zero network calls; asks the cloud only when it needs to.</span>
+                </div>
+                <span class="material-symbols-outlined pv-mode-check" aria-hidden="true">check</span>
+              </label>
+              <label class="pv-mode-popover-item" id="dialOptLocal">
+                <input type="radio" name="privacyDialMode" value="local" id="radioDialLocal" />
+                <div class="pv-mode-popover-text">
+                  <span class="pv-mode-popover-title">Fully Local</span>
+                  <span class="pv-mode-popover-desc">The cloud model is never contacted — not even redacted metadata. Slower and less capable, by design; asks you directly for anything it can't confidently resolve.</span>
+                </div>
+                <span class="material-symbols-outlined pv-mode-check" aria-hidden="true">check</span>
+              </label>
+              <label class="pv-mode-popover-item" id="dialOptDebate">
+                <input type="radio" name="privacyDialMode" value="debate" id="radioDialDebate" />
+                <div class="pv-mode-popover-text">
+                  <span class="pv-mode-popover-title">Hybrid Debate ⭐</span>
+                  <span class="pv-mode-popover-desc">Runs the on-device model and the cloud model at the same time and shows you both decisions — not just one. Disagreements are shown, never hidden.</span>
+                </div>
+                <span class="material-symbols-outlined pv-mode-check" aria-hidden="true">check</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Local Private Information Store (Local Only) -->
+        <div class="pv-settings-card">
+          <div class="pv-store-section">
+            <div class="pv-store-header-row">
+              <div class="pv-store-title-wrap">
+                <span class="material-symbols-outlined pv-store-icon" aria-hidden="true">shield_person</span>
+                <span class="pv-card-title">Personal Information</span>
+              </div>
+              <span class="pv-badge-local">STRICTLY LOCAL</span>
+            </div>
+            <p class="pv-hint pv-no-margin">
+              Store profile data (e.g. name, email, phone, college) on-device for automatic form filling. Values remain strictly in your browser.
+            </p>
+
+            <!-- Add / Edit Input Group -->
+            <div class="pv-store-form">
+              <div class="pv-store-form-row">
+                <input id="storeKeyInput" type="text" class="pv-input pv-store-input pv-store-key-input" placeholder="Key (e.g. email, phone)" aria-label="Key (e.g. email, phone)" />
+                <div class="pv-store-val-wrapper">
+                  <input id="storeValInput" type="password" class="pv-input pv-store-input pv-store-val-input" placeholder="Value (stored locally)" aria-label="Value (stored locally)" />
+                  <button id="toggleStoreValMaskBtn" type="button" class="pv-icon-btn pv-store-mask-btn" title="Toggle visibility" aria-label="Toggle visibility">
+                    <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                  </button>
+                </div>
+              </div>
+              <div class="pv-store-actions-row">
+                <button id="saveStoreEntryBtn" type="button" class="pv-btn pv-btn-primary pv-btn-sm">
+                  <span class="material-symbols-outlined pv-btn-icon" aria-hidden="true">add</span>
+                  <span id="saveStoreEntryBtnText">Save Information</span>
+                </button>
+                <button id="cancelStoreEditBtn" type="button" class="pv-btn pv-btn-sm pv-btn-subtle" hidden>Cancel</button>
+                <span id="storeSavedNote" class="pv-status-note" hidden>Saved locally.</span>
+              </div>
+            </div>
+
+            <!-- Stored Items List -->
+            <div class="pv-store-list-container">
+              <div class="pv-store-list-header">
+                <span class="pv-label pv-no-margin">Stored Items (<span id="storeItemsCount">0</span>)</span>
+                <button id="clearStoreBtn" type="button" class="pv-text-btn pv-text-danger" title="Clear all local data">Clear All</button>
+              </div>
+              <div id="storeEntriesList" class="pv-store-entries-list">
+                <!-- Dynamically rendered items -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div id="userInputContainer" class="pv-user-input-container"></div>
     </section>
+
+    <!-- Enlarged screenshot viewer for the Before/After panel. -->
+    <div id="baLightbox" class="pv-lightbox" hidden role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
+      <div class="pv-lightbox-bar">
+        <span id="baLightboxTitle">Screenshot</span>
+        <button type="button" class="pv-btn pv-btn-secondary" id="baLightboxClose">Close</button>
+      </div>
+      <div class="pv-lightbox-body"><canvas id="baLightboxCanvas"></canvas></div>
+    </div>
 
     <!-- Footer Component -->
     <footer class="pv-footer">
-      <span class="pv-footer-text">Local model: active | Server: Pixtral (cloud)</span>
+      <span class="pv-footer-text" id="footerStatus">Privacy Dial: — | On-device model: checking…</span>
     </footer>
   </div>
 
   <!-- Shared utils (order matters: dependencies first) -->
   <script src="../utils/logger.js"></script>
   <script src="../utils/geometry.js"></script>
+  <script src="../utils/merkleProof.js"></script>
+  <script src="../utils/iconHeuristics.js"></script>
+  <script src="../utils/visualStateEngine.js"></script>
+  <script src="../utils/featureDetection.js"></script>
+  <script src="../utils/opfsManager.js"></script>
+  <!-- iconModel.js defines the trained weights as a global; iconClassifier.js
+       auto-loads them on definition, so the weights must come first. -->
+  <script src="../utils/iconModel.js"></script>
+  <script src="../utils/iconClassifier.js"></script>
 
   <!-- Agent architecture -->
   <script src="../agent/stateManager.js"></script>
   <script src="../agent/taskManager.js"></script>
+  <script src="../agent/taskMemory.js"></script>
+  <script src="../agent/privateDataStore.js"></script>
+  <script src="../agent/fieldMatcher.js"></script>
+  <script src="../agent/stateDiffEngine.js"></script>
+  <script src="../agent/formAnalyzer.js"></script>
+  <script src="../agent/consequentialActionDetector.js"></script>
+  <script src="../agent/trustGate.js"></script>
+  <script src="../agent/actionVerifier.js"></script>
+  <script src="../agent/recoveryEngine.js"></script>
+  <script src="../agent/privacyBoundary.js"></script>
+  <script src="../agent/privacyDial.js"></script>
+  <script src="../agent/constitutionVersion.js"></script>
+  <script src="../agent/visualDomGrounder.js"></script>
+  <script src="../agent/confidenceScorer.js"></script>
   <script src="../agent/agentBackend.js"></script>
+  <script src="../agent/debateManager.js"></script>
+  <script src="../agent/decisionRouter.js"></script>
+  <script src="../agent/complianceChecker.js"></script>
+  <script src="../agent/verificationLoop.js"></script>
+  <script src="../agent/evidenceGenerator.js"></script>
   <script src="../agent/agentController.js"></script>
   <script src="../agent/userInputManager.js"></script>
 

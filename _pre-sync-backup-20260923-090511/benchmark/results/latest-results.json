@@ -1,0 +1,297 @@
+{
+  "generatedAt": "2026-09-18T16:02:30.107Z",
+  "sections": [
+    {
+      "category": "Sensitive data detection (ISRO weight: 20%)",
+      "totalCases": 25,
+      "truePositives": 18,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 7,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "avgLatencyMs": 1.7410283999999998,
+      "failures": [],
+      "scope": "Regex + checksum layer only (Luhn/Verhoeff/IBAN-mod97/ICAO-9303-MRZ/entropy). NER pass excluded — requires the real browser offscreen document."
+    },
+    {
+      "category": "Local field-matching accuracy (feeds Visual context accuracy, 25% weight)",
+      "totalCases": 13,
+      "truePositives": 8,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 5,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "avgLatencyMs": 0.7643634615384615,
+      "failures": []
+    },
+    {
+      "category": "Consequential-action safety gate (hard safety requirement — a false negative here means an unauthorized real-world action)",
+      "totalCases": 12,
+      "truePositives": 7,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 5,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "avgLatencyMs": 0.3347224166666667,
+      "failures": []
+    },
+    {
+      "category": "Redaction integrity (proxy for Redaction precision, 20% weight)",
+      "totalChecks": 6,
+      "passed": 6,
+      "failed": 0,
+      "checks": [
+        {
+          "name": "valid_proof_verifies",
+          "pass": true
+        },
+        {
+          "name": "tampered_root_rejected",
+          "pass": true
+        },
+        {
+          "name": "tampered_tile_hash_rejected",
+          "pass": true
+        },
+        {
+          "name": "tampered_signature_rejected",
+          "pass": true
+        },
+        {
+          "name": "correct_grid_dimensions",
+          "pass": true
+        },
+        {
+          "name": "correct_redacted_tile_count",
+          "pass": true
+        }
+      ],
+      "scope": "Cryptographic self-consistency of the Merkle-proof system (utils/merkleProof.js) against synthetic pixel data — not IoU against a labeled real-image dataset, which this harness has no images to provide."
+    },
+    {
+      "category": "Local screen-state perception (proxy for Visual context accuracy, 25% weight)",
+      "totalChecks": 24,
+      "passed": 24,
+      "failed": 0,
+      "checks": [
+        {
+          "name": "identical_frames_report_no_change",
+          "pass": true
+        },
+        {
+          "name": "dropdown_reported_as_localized_change",
+          "pass": true
+        },
+        {
+          "name": "navigation_reported_as_major_change",
+          "pass": true
+        },
+        {
+          "name": "viewport_resize_not_treated_as_comparable",
+          "pass": true
+        },
+        {
+          "name": "rotating_spinner_detected",
+          "pass": true
+        },
+        {
+          "name": "static_page_not_loading",
+          "pass": true
+        },
+        {
+          "name": "navigation_not_mistaken_for_spinner",
+          "pass": true
+        },
+        {
+          "name": "modal_detected",
+          "pass": true
+        },
+        {
+          "name": "modal_over_dark_page_detected",
+          "pass": true
+        },
+        {
+          "name": "normal_page_no_false_modal",
+          "pass": true
+        },
+        {
+          "name": "TRAP_dark_theme_no_false_modal",
+          "pass": true
+        },
+        {
+          "name": "TRAP_dark_chrome_no_false_modal",
+          "pass": true
+        },
+        {
+          "name": "TRAP_scroll_not_mistaken_for_modal",
+          "pass": true
+        },
+        {
+          "name": "modal_appearing_between_frames_high_confidence",
+          "pass": true
+        },
+        {
+          "name": "rendered_button_reported_painted",
+          "pass": true
+        },
+        {
+          "name": "text_block_reported_painted",
+          "pass": true
+        },
+        {
+          "name": "featureless_region_reported_unpainted",
+          "pass": true
+        },
+        {
+          "name": "tiny_box_fails_open",
+          "pass": true
+        },
+        {
+          "name": "report_flags_only_the_unpainted_element",
+          "pass": true,
+          "detail": "[\"ghost\"]"
+        },
+        {
+          "name": "loading_yields_wait_decision",
+          "pass": true
+        },
+        {
+          "name": "no_visible_change_after_click_is_flagged",
+          "pass": true
+        },
+        {
+          "name": "modal_yields_constrain_to_dialog",
+          "pass": true
+        },
+        {
+          "name": "successful_click_yields_no_intervention",
+          "pass": true
+        },
+        {
+          "name": "full_frame_analysis_under_250ms",
+          "pass": true,
+          "detail": "31ms at 1280x800"
+        }
+      ],
+      "latencyMs": 31,
+      "scope": "utils/visualStateEngine.js against synthetic scenes with known ground truth, including deliberate false-positive traps (dark theme, dark chrome, scroll). Synthetic scenes are not real screenshots: this validates the decision logic and catches regressions, it is not a claim of accuracy on arbitrary real websites."
+    },
+    {
+      "category": "Local icon classification (proxy for Visual context accuracy, 25% weight)",
+      "totalChecks": 4,
+      "passed": 4,
+      "failed": 0,
+      "checks": [
+        {
+          "name": "precision_when_answering_at_least_90pct",
+          "pass": true,
+          "detail": "100.0%"
+        },
+        {
+          "name": "coverage_at_least_70pct",
+          "pass": true,
+          "detail": "88.6%"
+        },
+        {
+          "name": "under_5ms_per_crop",
+          "pass": true,
+          "detail": "2.41ms"
+        },
+        {
+          "name": "model_under_50k_parameters",
+          "pass": true,
+          "detail": "6862 parameters"
+        }
+      ],
+      "coverage": 0.8857,
+      "precisionWhenAnswering": 1,
+      "declined": 8,
+      "msPerCrop": 2.414,
+      "modelParameters": 6862,
+      "perClass": {
+        "menu": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "close": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "search": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "cart": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "user": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "settings": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "chevron_left": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "chevron_right": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "plus": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "more": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "download": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "heart": {
+          "answered": 3,
+          "correct": 3,
+          "total": 5
+        },
+        "play": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "other": {
+          "answered": 3,
+          "correct": 3,
+          "total": 5
+        }
+      },
+      "reportedTrainingMetrics": {
+        "heldOut": 0.9154,
+        "stressOOD": 0.7689,
+        "shippingThreshold": 0.6
+      },
+      "scope": "Runs the shipped JS inference path (utils/iconClassifier.js + utils/iconModel.js) over 70 held-out synthetic crops. The model is trained on procedurally rendered glyphs, not real site icons, so real-world accuracy will be lower than these numbers — the confidence threshold is what keeps that gap safe rather than harmful. The full 3,500-sample evaluation is recorded in the model metadata."
+    }
+  ]
+}

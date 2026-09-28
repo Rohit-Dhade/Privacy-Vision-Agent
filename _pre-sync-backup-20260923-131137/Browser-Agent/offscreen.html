@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="lib/ort.wasm.min.js"></script>
+  <!-- On-device OCR (PP-OCR / PaddleOCR) confirmation for id-image
+       redaction runs through this same ONNX Runtime Web instance loaded
+       above (ort.InferenceSession, same as the YuNet face model) — see
+       the "On-device OCR" section in offscreen.js. No separate script
+       tag needed. Its two model files (models/ocr/det.onnx,
+       models/ocr/rec.onnx) are optional: vendor them per
+       models/ocr/README.md to enable OCR confirmation. Safe to leave
+       missing — offscreen.js fails closed and heuristic redaction still
+       runs either way. -->
+  <!-- Optional: vendor the WebLLM runtime locally per lib/webllm/README.md
+       to enable on-device LLM reasoning (Fully Local's local-model
+       fallback and Hybrid Debate mode). Safe to leave missing —
+       agent/webllmEngine.js fails closed and both modes degrade
+       gracefully (see that file's header comment). -->
+  <script src="lib/webllm/web-llm.js" onerror="console.warn('[offscreen] lib/webllm/web-llm.js not found — on-device LLM reasoning disabled, see lib/webllm/README.md')"></script>
+  <script src="agent/webllmEngine.js"></script>
+  <script src="offscreen.js"></script>
+</head>
+<body></body>
+</html>

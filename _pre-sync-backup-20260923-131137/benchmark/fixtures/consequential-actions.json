@@ -1,0 +1,73 @@
+[
+  {
+    "id": "pay-now",
+    "element": { "text": "Pay Now" },
+    "expectedConsequential": true,
+    "expectedActionType": "PAYMENT"
+  },
+  {
+    "id": "submit-kyc",
+    "element": { "text": "Submit KYC" },
+    "expectedConsequential": true,
+    "expectedActionType": "SUBMIT"
+  },
+  {
+    "id": "delete-account",
+    "element": { "text": "Delete Account" },
+    "expectedConsequential": true,
+    "expectedActionType": "DELETE"
+  },
+  {
+    "id": "cancel-subscription",
+    "element": { "text": "Cancel Subscription" },
+    "expectedConsequential": true,
+    "expectedActionType": "CANCEL"
+  },
+  {
+    "id": "publish-post",
+    "element": { "text": "Publish Post" },
+    "expectedConsequential": true,
+    "expectedActionType": "PUBLISH"
+  },
+  {
+    "id": "book-now",
+    "element": { "text": "Book Now" },
+    "expectedConsequential": true,
+    "expectedActionType": "BOOK"
+  },
+  {
+    "id": "proceed-to-checkout",
+    "element": { "text": "Proceed to Checkout" },
+    "expectedConsequential": true,
+    "expectedActionType": "PAYMENT",
+    "note": "The bare word 'checkout' is itself one of PAYMENT_PATTERNS's alternatives, and payment detection runs before the WORKFLOW_CONTINUE check — so this classifies as PAYMENT rather than WORKFLOW_CONTINUE. Not a safety gap (isConsequential is still true either way, so authorization is still required), just a labeling difference worth knowing about if a caller ever branches on actionType specifically."
+  },
+  {
+    "id": "back-button",
+    "element": { "text": "Back" },
+    "expectedConsequential": false,
+    "note": "Simple navigation/dismissal, must never trigger the authorization gate."
+  },
+  {
+    "id": "standalone-cancel-dialog-dismiss",
+    "element": { "text": "Cancel" },
+    "expectedConsequential": false,
+    "note": "Bare 'Cancel' with no order/subscription context is a dialog dismissal, not a cancellation action — this distinguishes it from 'Cancel Subscription' above."
+  },
+  {
+    "id": "learn-more",
+    "element": { "text": "Learn More" },
+    "expectedConsequential": false
+  },
+  {
+    "id": "bare-continue-not-flagged",
+    "element": { "text": "Continue" },
+    "expectedConsequential": false,
+    "note": "Deliberately tricky: a bare 'Continue' button is NOT in CONTINUE_PATTERNS (only phrases like 'proceed to checkout' are) — this is a genuine current limitation surfaced honestly by this fixture, not a bug the harness hides. A generic multi-step wizard's plain 'Continue' button will not itself trigger the authorization gate; whatever it reveals next will still be screened independently."
+  },
+  {
+    "id": "close-dialog",
+    "element": { "text": "Close" },
+    "expectedConsequential": false
+  }
+]

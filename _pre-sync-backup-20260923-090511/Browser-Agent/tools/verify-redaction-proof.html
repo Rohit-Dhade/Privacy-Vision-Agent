@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redaction Proof Verifier — Privacy-Vision-Agent</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    background: #0f1420;
+    color: #e7ecf5;
+    margin: 0;
+    padding: 32px 16px;
+  }
+  .container { max-width: 720px; margin: auto; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .subtitle { color: #93a1bd; font-size: 14px; margin-bottom: 24px; }
+  .card {
+    background: #171d2c;
+    border: 1px solid #2a3450;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 160px;
+    background: #0c101a;
+    color: #d9e2f5;
+    border: 1px solid #2a3450;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    resize: vertical;
+  }
+  input[type="file"] { margin-top: 6px; }
+  button {
+    margin-top: 14px;
+    background: #2f6fed;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  button:disabled { background: #3a4560; cursor: not-allowed; }
+  .result { margin-top: 18px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .badge-pass { background: #113a24; color: #5fe0a0; border: 1px solid #1f6b45; }
+  .badge-fail { background: #3a1414; color: #ff8a8a; border: 1px solid #6b1f1f; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #232b41; font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .row-label { color: #93a1bd; }
+  .row-val { font-weight: 700; }
+  .ok { color: #5fe0a0; }
+  .bad { color: #ff8a8a; }
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
+    gap: 3px;
+    margin-top: 10px;
+  }
+  .tile { width: 100%; aspect-ratio: 1; border-radius: 3px; }
+  .tile-ok { background: #1f6b45; }
+  .tile-bad { background: #6b1f1f; }
+  .hint { color: #6c7a99; font-size: 12px; line-height: 1.5; margin-top: 10px; }
+  .errlist { color: #ff8a8a; font-size: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔏 Redaction Proof Verifier</h1>
+  <p class="subtitle">
+    Independent, offline verification of a Privacy-Vision-Agent redaction proof.
+    This page needs no server, no extension, and no network connection — it only
+    needs the proof JSON. It never sees the original screenshot; it mathematically
+    confirms the proof's internal consistency using nothing but hashes and a
+    public key, both already embedded in the proof itself.
+  </p>
+
+  <div class="card">
+    <label for="proofInput">Paste the redaction proof JSON (or choose a .json file below)</label>
+    <textarea id="proofInput" placeholder='{"version":1,"algorithm":"SHA-256 Merkle tree + ECDSA-P256-SHA256", ...}'></textarea>
+    <input type="file" id="proofFile" accept="application/json,.json">
+    <br>
+    <button id="verifyBtn">Verify Proof</button>
+  </div>
+
+  <div class="result" id="result" style="display:none;"></div>
+
+  <div class="hint">
+    <strong>What "valid" means here:</strong> every tile the extension claims was
+    redacted really was part of the single screenshot it originally committed to
+    (its Merkle inclusion proof recomputes to the signed root), and the whole
+    manifest is signed by the key embedded in the proof — so nothing in this JSON
+    was edited after the fact. <strong>What it does NOT mean:</strong> this does
+    not prove who ran the extension or that the key belongs to any particular
+    person/organization — the signing key is generated fresh per browsing
+    session specifically so this tool proves internal pipeline consistency, not
+    signer identity. It also does not reveal, and cannot reveal, what was in any
+    redacted region — SHA-256 hashes do not leak their input.
+  </div>
+</div>
+
+<script src="../utils/merkleProof.js"></script>
+<script>
+  const els = {
+    input: document.getElementById('proofInput'),
+    file: document.getElementById('proofFile'),
+    btn: document.getElementById('verifyBtn'),
+    result: document.getElementById('result')
+  };
+
+  els.file.addEventListener('change', async () => {
+    const file = els.file.files[0];
+    if (!file) return;
+    els.input.value = await file.text();
+  });
+
+  els.btn.addEventListener('click', async () => {
+    els.result.style.display = 'block';
+    let proof;
+    try {
+      proof = JSON.parse(els.input.value);
+    } catch (e) {
+      els.result.innerHTML = `<div class="card"><span class="badge badge-fail">✗ INVALID JSON</span><div class="errlist">${e.message}</div></div>`;
+      return;
+    }
+
+    if (typeof window.__BA_MerkleProof === 'undefined') {
+      els.result.innerHTML = `<div class="card"><span class="badge badge-fail">✗ VERIFIER LIBRARY MISSING</span><div class="errlist">../utils/merkleProof.js did not load — keep this file's folder structure intact (tools/ next to utils/).</div></div>`;
+      return;
+    }
+
+    els.btn.disabled = true;
+    els.btn.textContent = 'Verifying…';
+    try {
+      const v = await window.__BA_MerkleProof.verifyRedactionProof(proof);
+      const badge = v.overallValid
+        ? '<span class="badge badge-pass">✓ PROOF VALID</span>'
+        : '<span class="badge badge-fail">✗ PROOF INVALID</span>';
+
+      const tilesHtml = (v.tileResults || []).map((t) =>
+        `<div class="tile ${t.valid ? 'tile-ok' : 'tile-bad'}" title="tile ${t.index} (row ${t.row}, col ${t.col}): ${t.valid ? 'valid' : 'INVALID'}"></div>`
+      ).join('');
+
+      els.result.innerHTML = `
+        <div class="card">
+          ${badge}
+          <div class="row"><span class="row-label">Signature valid</span><span class="row-val ${v.signatureValid ? 'ok' : 'bad'}">${v.signatureValid ? 'YES' : 'NO'}</span></div>
+          <div class="row"><span class="row-label">All inclusion proofs valid</span><span class="row-val ${v.inclusionProofsValid ? 'ok' : 'bad'}">${v.inclusionProofsValid ? 'YES' : 'NO'}</span></div>
+          <div class="row"><span class="row-label">Merkle root</span><span class="row-val">${(proof.merkleRoot || '').slice(0, 24)}…</span></div>
+          <div class="row"><span class="row-label">Redacted tiles proven</span><span class="row-val">${(v.tileResults || []).length} / ${proof.redactedTileCount ?? '?'}</span></div>
+          <div class="row"><span class="row-label">Screenshot grid</span><span class="row-val">${proof.gridWidth ?? '?'} × ${proof.gridHeight ?? '?'} tiles (${proof.tileSize ?? '?'}px each)</span></div>
+          <div class="row"><span class="row-label">Committed at</span><span class="row-val">${proof.timestamp ? new Date(proof.timestamp).toLocaleString() : '?'}</span></div>
+          ${v.errors && v.errors.length ? `<div class="errlist">${v.errors.join('<br>')}</div>` : ''}
+          <div class="tiles">${tilesHtml}</div>
+        </div>
+      `;
+    } catch (err) {
+      els.result.innerHTML = `<div class="card"><span class="badge badge-fail">✗ VERIFICATION ERROR</span><div class="errlist">${err.message}</div></div>`;
+    } finally {
+      els.btn.disabled = false;
+      els.btn.textContent = 'Verify Proof';
+    }
+  });
+</script>
+</body>
+</html>

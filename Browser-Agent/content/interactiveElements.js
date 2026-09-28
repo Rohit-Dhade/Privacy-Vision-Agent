@@ -20,10 +20,17 @@
     '[role="checkbox"]',
     '[role="radio"]',
     '[role="combobox"]',
+    '[role="searchbox"]',
+    '[role="textbox"]',
     '[role="switch"]',
     '[role="option"]',
     '[tabindex]'
   ].join(',');
+
+  // How many nested open shadow roots to descend. Design systems nest a few
+  // levels; this is a guard against a pathological or cyclic structure, not a
+  // meaningful limit on real pages.
+  const MAX_SHADOW_DEPTH = 12;
 
   // Input types whose raw value must never be captured, even locally.
   const SENSITIVE_VALUE_INPUT_TYPES = new Set(['password']);
@@ -68,7 +75,8 @@
     }
     if (tag === 'select') {
       const opt = el.options && el.options[el.selectedIndex];
-      return opt ? (opt.text || opt.value || null) : (el.value || null);
+      if (!opt || opt.value === '' || opt.disabled) return null;
+      return opt.value || opt.text || null;
     }
     if (tag === 'textarea') return el.value || null;
     return null;
@@ -101,12 +109,96 @@
     }));
   }
 
+  /** Text of the <label> element(s) tied to a form control (label[for],
+   *  a wrapping <label>, or aria-labelledby). */
+  function associatedLabelText(el) {
+    try {
+      if (el.labels && el.labels.length) {
+        const t = Array.from(el.labels).map((l) => l.textContent || '').join(' ').replace(/\s+/g, ' ').trim();
+        if (t) return t;
+      }
+    } catch (_) { /* ignore */ }
+    const ids = el.getAttribute('aria-labelledby');
+    if (ids) {
+      const root = el.getRootNode ? el.getRootNode() : document;
+      const t = ids.split(/\s+/).map((id) => {
+        const ref = (root.getElementById ? root.getElementById(id) : null) || document.getElementById(id);
+        return ref ? ref.textContent || '' : '';
+      }).join(' ').replace(/\s+/g, ' ').trim();
+      if (t) return t;
+    }
+    return '';
+  }
+
+  /**
+   * Human-readable name of an element.
+   *
+   * For form fields this is their LABEL, never their value. It used to be
+   * `aria-label || el.value || innerText`, so a filled field's `text` was
+   * the user's data itself ("Priya Sharma", "priya.sharma@example.com").
+   * `text` is sent to the cloud reasoner in the DOM skeleton and becomes the
+   * field's label in the state diff, so every value the agent had just
+   * filled went out with the next step, and the pre-flight scan only looks
+   * for card/PAN/Aadhaar/password patterns. It also meant fields had no
+   * label to match on, so "Residential Address" / "PIN Code" / "Emergency
+   * Contact Number" were never auto-filled from the local store. The value
+   * itself is still available locally as `value` (safeValue) / `hasValue`.
+   * Submit/button inputs keep using their value, which is their caption.
+   */
   function shortText(el) {
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    const isCaptionInput = tag === 'input' && (type === 'submit' || type === 'button' || type === 'reset');
+    if ((tag === 'input' && !isCaptionInput) || tag === 'textarea' || tag === 'select') {
+      const label = el.getAttribute('aria-label') || associatedLabelText(el) || el.getAttribute('title') || '';
+      return label.trim().slice(0, 200);
+    }
     const label =
       el.getAttribute('aria-label') ||
-      el.value ||
+      (isCaptionInput ? el.value : '') ||
       (el.innerText || el.textContent || '').trim();
     return label ? label.slice(0, 200) : '';
+  }
+
+  function isStickyElement(el) {
+    let curr = el;
+    while (curr && curr !== document.body && curr !== document.documentElement) {
+      try {
+        const pos = window.getComputedStyle(curr).position;
+        if (pos === 'fixed' || pos === 'sticky') return true;
+      } catch (_) {}
+      curr = curr.parentElement;
+    }
+    return false;
+  }
+
+  function isSearchInput(el, inputType) {
+    if (inputType === 'search') return true;
+    if (el.getAttribute('role') === 'searchbox') return true;
+    const name = (el.getAttribute('name') || '').toLowerCase();
+    const placeholder = (el.getAttribute('placeholder') || '').toLowerCase();
+    const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+    const id = (el.id || '').toLowerCase();
+    return name.includes('search') || placeholder.includes('search') || ariaLabel.includes('search') || id.includes('search');
+  }
+
+  function isPaginationControl(el, text) {
+    const parentNav = el.closest('nav, [role="navigation"]');
+    const isPagingNav = parentNav && /pagination|paging/i.test(parentNav.getAttribute('aria-label') || parentNav.className || '');
+    if (isPagingNav) return true;
+    const cleanText = text.trim().toLowerCase();
+    if (/^(next|prev|previous|first|last|\d+)$/i.test(cleanText)) return true;
+    const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+    if (ariaLabel.includes('page') || ariaLabel.includes('pagination') || ariaLabel.includes('next page') || ariaLabel.includes('previous page')) return true;
+    return false;
+  }
+
+  function getModalAncestor(el) {
+    return el.closest('dialog[open], [role="dialog"], [role="alertdialog"], [aria-modal="true"]');
+  }
+
+  function getNavAncestor(el) {
+    return el.closest('nav, [role="navigation"], header');
   }
 
   /**
@@ -114,14 +206,51 @@
    * Returns { elements: [...], registry: Map<id, HTMLElement> }
    */
   function extractInteractiveElements(viewportWidth, viewportHeight) {
-    const candidates = new Set(document.querySelectorAll(INTERACTIVE_SELECTOR));
+    const candidates = new Set();
 
-    document.querySelectorAll('div,span,li,section,article').forEach((el) => {
-      if (candidates.has(el)) return;
-      if (hasPointerCursor(el) && el.getAttribute('tabindex') !== '-1') {
-        candidates.add(el);
-      }
-    });
+    // Collect across shadow boundaries.
+    //
+    // document.querySelectorAll() does not pierce shadow roots — not "less
+    // reliably", not at all. On a site built from web components (which is now
+    // most design systems: Salesforce Lightning, Ionic, many bank portals,
+    // large parts of YouTube) a document-level query returns ZERO interactive
+    // elements. That was measured, not assumed: against
+    // test-pages/hostile-realworld.html the pipeline found zero elements and
+    // zero PII on a page carrying an Aadhaar number and a form field three
+    // shadow roots deep.
+    //
+    // Both halves of that matter. The agent being blind is a capability
+    // failure. The PII going undetected is a PRIVACY failure, because those
+    // pixels are still captured into the screenshot that gets transmitted.
+    //
+    // So this walks the composed tree: every element's own shadowRoot is
+    // descended into recursively. Closed roots remain unreachable — that is a
+    // browser guarantee rather than an oversight, and the hostile fixture
+    // documents it.
+    //
+    // A CSS selector cannot cross a shadow boundary, so selectors generated
+    // for these elements will not resolve through document.querySelector().
+    // That is handled: content.js's resolveElement() prefers the live element
+    // registry keyed by id and only falls back to the selector, and the
+    // registry holds the real node reference.
+    function collectDeep(scope, depth) {
+      if (!scope || depth > MAX_SHADOW_DEPTH) return;
+
+      scope.querySelectorAll(INTERACTIVE_SELECTOR).forEach((el) => candidates.add(el));
+
+      scope.querySelectorAll('div,span,li,section,article').forEach((el) => {
+        if (candidates.has(el)) return;
+        if (hasPointerCursor(el) && el.getAttribute('tabindex') !== '-1') {
+          candidates.add(el);
+        }
+      });
+
+      scope.querySelectorAll('*').forEach((el) => {
+        if (el.shadowRoot) collectDeep(el.shadowRoot, depth + 1);
+      });
+    }
+
+    collectDeep(document, 0);
 
     const elements = [];
     const registry = new Map();
@@ -137,14 +266,21 @@
       const selector = root.__BA_Selectors.getStableSelector(el);
       const tag = el.tagName.toLowerCase();
       const inputType = (el.getAttribute('type') || '').toLowerCase();
+      const text = shortText(el);
 
       elements.push({
         id,
         type: classifyType(el),
-        text: shortText(el),
+        text,
         ariaLabel: el.getAttribute('aria-label') || null,
         placeholder: el.getAttribute('placeholder') || null,
         value: safeValue(el),
+        // Whether a sensitive-type field (password, etc.) holds anything.
+        // safeValue() deliberately returns null for those, which made a
+        // FILLED password field look empty forever, so the agent kept
+        // asking the user to type a password they had already entered.
+        // A boolean only; the value itself is never read out.
+        valuePresent: (tag === 'input' && SENSITIVE_VALUE_INPUT_TYPES.has(inputType)) ? Boolean(el.value) : undefined,
         href: tag === 'a' ? el.getAttribute('href') : null,
         // Extra metadata for special element types
         options: selectOptions(el),          // <select> choices
@@ -159,7 +295,20 @@
         },
         selector,
         visible: true,
-        enabled: !isDisabled(el)
+        enabled: !isDisabled(el),
+        // Semantic categorization
+        isSearch: isSearchInput(el, inputType),
+        isPagination: isPaginationControl(el, text),
+        inModal: Boolean(getModalAncestor(el)),
+        inNav: Boolean(getNavAncestor(el)),
+        isSticky: isStickyElement(el),
+        formId: el.form ? (el.form.id || el.form.name || el.form.getAttribute('action') || 'form') : (el.closest('form') ? (el.closest('form').id || 'form') : null),
+        // Resolved (absolute) form submission URL, if any — used by the
+        // pre-autofill trust gate (agent/trustGate.js) to detect a form
+        // that posts to a different domain than the page it's shown on.
+        // `.action` (not getAttribute) so the browser resolves it to an
+        // absolute URL for us, matching how it will actually submit.
+        formAction: el.form ? (el.form.action || null) : (el.closest('form') ? (el.closest('form').action || null) : null)
       });
 
       registry.set(id, el);

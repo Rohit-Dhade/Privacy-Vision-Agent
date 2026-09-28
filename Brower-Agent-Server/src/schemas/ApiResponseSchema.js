@@ -14,13 +14,13 @@ const messageSchema = z.object({
             }).optional()
         })
     )
-})
+});
 
-const actionSchema = z.create({
+const ApiResponseSchema = z.object({
     model: z.string(),
     max_tokens: z.number(),
     system: z.string(),
     messages: z.array(messageSchema),
-})
+});
 
-export default actionSchema;
+export default ApiResponseSchema;

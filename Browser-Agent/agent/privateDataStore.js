@@ -1,0 +1,242 @@
+/**
+ * agent/privateDataStore.js
+ *
+ * Local Private Information Store
+ *
+ * A small browser-local key-value data layer for storing personal information
+ * (e.g. name, email, phone, address, college, arbitrary keys) entirely on-device.
+ *
+ * PRIVACY GUARANTEES:
+ * 1. Storage is strictly local to the browser using `chrome.storage.local`.
+ * 2. Values in this store are NEVER sent to any remote LLM/VLM, backend endpoint,
+ *    telemetry, action history, or network request.
+ * 3. Actual private values are NEVER logged to console/debug outputs.
+ */
+(function (root) {
+  const STORAGE_KEY = 'pv_private_store';
+
+  class PrivateDataStore {
+    constructor() {
+      this._storageKey = STORAGE_KEY;
+    }
+
+    /**
+     * Internal helper to load the entire key-value dictionary from chrome.storage.local.
+     * @private
+     * @returns {Promise<Record<string, string>>}
+     */
+    async _readStore() {
+      return new Promise((resolve) => {
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get([this._storageKey], (result) => {
+              if (chrome.runtime && chrome.runtime.lastError) {
+                console.warn('[PrivateDataStore] Error reading local store:', chrome.runtime.lastError.message);
+                resolve({});
+                return;
+              }
+              const store = result && result[this._storageKey];
+              resolve(store && typeof store === 'object' ? { ...store } : {});
+            });
+          } else {
+            // Fallback for non-extension / dev environments
+            const raw = localStorage.getItem(this._storageKey);
+            resolve(raw ? JSON.parse(raw) : {});
+          }
+        } catch (err) {
+          console.warn('[PrivateDataStore] Read failed:', err.message);
+          resolve({});
+        }
+      });
+    }
+
+    /**
+     * Internal helper to persist the dictionary to chrome.storage.local.
+     * @private
+     * @param {Record<string, string>} store
+     * @returns {Promise<void>}
+     */
+    async _writeStore(store) {
+      return new Promise((resolve, reject) => {
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ [this._storageKey]: store }, () => {
+              if (chrome.runtime && chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+              }
+              resolve();
+            });
+          } else {
+            localStorage.setItem(this._storageKey, JSON.stringify(store));
+            resolve();
+          }
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    /**
+     * Determines whether a stored value is valid and available (non-empty).
+     * Missing: undefined, null, empty string, whitespace-only string.
+     * Legitimate: boolean (false/true), numbers (0, etc.), non-empty strings.
+     * @param {any} val
+     * @returns {boolean}
+     */
+    static isValueAvailable(val) {
+      if (val === undefined || val === null) return false;
+      if (typeof val === 'string') {
+        return val.trim().length > 0;
+      }
+      if (typeof val === 'boolean' || typeof val === 'number') {
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * Retrieves all stored key-value pairs with non-empty values.
+     * @returns {Promise<Record<string, string>>}
+     */
+    async getAll() {
+      const store = await this._readStore();
+      const clean = {};
+      for (const [k, v] of Object.entries(store)) {
+        if (PrivateDataStore.isValueAvailable(v)) {
+          clean[k] = v;
+        }
+      }
+      return clean;
+    }
+
+    /**
+     * Retrieves all stored keys that have non-empty available values.
+     * @returns {Promise<string[]>}
+     */
+    async getAllKeys() {
+      const store = await this._readStore();
+      return Object.keys(store).filter((k) => PrivateDataStore.isValueAvailable(store[k]));
+    }
+
+    /**
+     * Retrieves the stored value for a specific key.
+     * Returns null if missing or empty/whitespace.
+     * @param {string} key
+     * @returns {Promise<string | null>}
+     */
+    /**
+     * The field matcher returns the most SPECIFIC key for a field (a
+     * "Residential Address" label resolves to home_address, "PIN Code" to
+     * zip), but people save their data under whatever name comes to mind
+     * ("address", "pincode"). Without this, a value the user had saved was
+     * silently not used and the agent asked them to type it. Exact key
+     * first, then these fallbacks in order. Only related keys are listed,
+     * never across meanings (a home address never falls back to billing).
+     */
+    static keyCandidates(key) {
+      const k = key.trim().toLowerCase();
+      const ALIASES = {
+        home_address: ['address', 'residential_address', 'street_address'],
+        address: ['home_address', 'residential_address', 'street_address'],
+        street_address: ['address', 'home_address'],
+        zip: ['pincode', 'pin_code', 'postal_code', 'postcode', 'zipcode', 'zip_code'],
+        name: ['full_name', 'fullname', 'full name'],
+        phone: ['mobile', 'mobile_number', 'phone_number', 'mobile_phone'],
+        dob: ['date_of_birth', 'birthdate', 'birth_date'],
+        email: ['email_address', 'e-mail'],
+        emergency_phone: ['emergency_contact', 'emergency_contact_number', 'emergency_number'],
+      };
+      return [k, ...(ALIASES[k] || [])];
+    }
+
+    async _resolve(key) {
+      if (!key || typeof key !== 'string') return null;
+      const store = await this._readStore();
+      for (const candidate of PrivateDataStore.keyCandidates(key)) {
+        // Try exact candidate, plus space↔underscore variants so that
+        // user-saved "full name" matches field-matcher key "full_name"
+        // and vice versa.
+        const variants = new Set([
+          candidate,
+          candidate.replace(/\s+/g, '_'),   // "full name"  → "full_name"
+          candidate.replace(/_+/g, ' '),     // "full_name"  → "full name"
+        ]);
+        for (const v of variants) {
+          if (Object.prototype.hasOwnProperty.call(store, v) && PrivateDataStore.isValueAvailable(store[v])) {
+            return { key: v, value: store[v] };
+          }
+        }
+      }
+      return null;
+    }
+
+    async get(key) {
+      const hit = await this._resolve(key);
+      return hit ? hit.value : null;
+    }
+
+    /**
+     * Checks if a key exists in the local store AND has a non-empty available value.
+     * @param {string} key
+     * @returns {Promise<boolean>}
+     */
+    async has(key) {
+      return (await this._resolve(key)) !== null;
+    }
+
+    /**
+     * Stores or updates a key-value entry locally.
+     * @param {string} key
+     * @param {string} value
+     * @returns {Promise<void>}
+     */
+    async set(key, value) {
+      if (!key || typeof key !== 'string') {
+        throw new Error('Invalid key: key must be a non-empty string.');
+      }
+      const normalizedKey = key.trim().toLowerCase();
+      if (!normalizedKey) {
+        throw new Error('Key cannot be empty.');
+      }
+
+      const store = await this._readStore();
+      store[normalizedKey] = typeof value === 'string' ? value : String(value ?? '');
+      await this._writeStore(store);
+
+      // Metadata log only: NEVER log the value
+      console.log(`[PrivateDataStore] Saved local entry for key: "${normalizedKey}"`);
+    }
+
+    /**
+     * Removes a key-value entry from local storage.
+     * @param {string} key
+     * @returns {Promise<void>}
+     */
+    async remove(key) {
+      if (!key || typeof key !== 'string') return;
+      const normalizedKey = key.trim().toLowerCase();
+      const store = await this._readStore();
+      if (Object.prototype.hasOwnProperty.call(store, normalizedKey)) {
+        delete store[normalizedKey];
+        await this._writeStore(store);
+        console.log(`[PrivateDataStore] Removed local entry for key: "${normalizedKey}"`);
+      }
+    }
+
+    /**
+     * Wipes all entries from the local private store.
+     * @returns {Promise<void>}
+     */
+    async clear() {
+      await this._writeStore({});
+      console.log('[PrivateDataStore] Cleared all local private entries.');
+    }
+  }
+
+  root.__BA_PrivateDataStore = PrivateDataStore;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { PrivateDataStore };
+  }
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : self));

@@ -1,0 +1,558 @@
+{
+  "generatedAt": "2026-09-24T09:45:20.279Z",
+  "sections": [
+    {
+      "category": "Sensitive data detection (ISRO weight: 20%)",
+      "totalCases": 38,
+      "truePositives": 28,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 10,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "avgLatencyMs": 15.052214947368428,
+      "failures": [],
+      "scope": "Regex + checksum layer only (Luhn/Verhoeff/IBAN-mod97/ICAO-9303-MRZ/entropy). NER pass excluded — requires the real browser offscreen document."
+    },
+    {
+      "category": "Local field-matching accuracy (feeds Visual context accuracy, 25% weight)",
+      "totalCases": 13,
+      "truePositives": 8,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 5,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "avgLatencyMs": 5.325569153846154,
+      "failures": []
+    },
+    {
+      "category": "Consequential-action safety gate (hard safety requirement — a false negative here means an unauthorized real-world action)",
+      "totalCases": 12,
+      "truePositives": 7,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 5,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "avgLatencyMs": 0.6730968333333333,
+      "failures": []
+    },
+    {
+      "category": "Redaction integrity (proxy for Redaction precision, 20% weight)",
+      "totalChecks": 6,
+      "passed": 6,
+      "failed": 0,
+      "checks": [
+        {
+          "name": "valid_proof_verifies",
+          "pass": true
+        },
+        {
+          "name": "tampered_root_rejected",
+          "pass": true
+        },
+        {
+          "name": "tampered_tile_hash_rejected",
+          "pass": true
+        },
+        {
+          "name": "tampered_signature_rejected",
+          "pass": true
+        },
+        {
+          "name": "correct_grid_dimensions",
+          "pass": true
+        },
+        {
+          "name": "correct_redacted_tile_count",
+          "pass": true
+        }
+      ],
+      "scope": "Cryptographic self-consistency of the Merkle-proof system (utils/merkleProof.js) against synthetic pixel data — not IoU against a labeled real-image dataset, which this harness has no images to provide."
+    },
+    {
+      "category": "Hybrid Debate resolution logic (v25 Part 3, Task 6.1 — new Privacy Dial mode, not an ISRO rubric category)",
+      "totalChecks": 52,
+      "passed": 52,
+      "failed": 0,
+      "checks": [
+        {
+          "name": "agree-same-target-high-confidence__does_not_throw",
+          "pass": true,
+          "detail": "Both reasoners pick the same field and are both fairly confident — should resolve as a plain AGREE, using whichever side scored (marginally) higher."
+        },
+        {
+          "name": "agree-same-target-high-confidence__mode_FULL_DEBATE",
+          "pass": true,
+          "detail": "got FULL_DEBATE"
+        },
+        {
+          "name": "agree-same-target-high-confidence__resolution_AGREE",
+          "pass": true,
+          "detail": "got AGREE"
+        },
+        {
+          "name": "agree-same-target-high-confidence__agreement_true",
+          "pass": true,
+          "detail": "got true"
+        },
+        {
+          "name": "agree-same-target-high-confidence__decided_by_local",
+          "pass": true,
+          "detail": "got local"
+        },
+        {
+          "name": "agree-same-target-high-confidence__winner_action_click",
+          "pass": true,
+          "detail": "got click"
+        },
+        {
+          "name": "agree-same-target-high-confidence__winner_target_#next",
+          "pass": true,
+          "detail": "got #next"
+        },
+        {
+          "name": "agree-same-target-high-confidence__decision_has_numeric_confidence",
+          "pass": true
+        },
+        {
+          "name": "agree-no-target-both-wait__does_not_throw",
+          "pass": true,
+          "detail": "Both reasoners propose a targetless action (wait) — actionsRoughlyMatch() has an explicit branch for this; it should still count as agreement."
+        },
+        {
+          "name": "agree-no-target-both-wait__mode_FULL_DEBATE",
+          "pass": true,
+          "detail": "got FULL_DEBATE"
+        },
+        {
+          "name": "agree-no-target-both-wait__resolution_AGREE",
+          "pass": true,
+          "detail": "got AGREE"
+        },
+        {
+          "name": "agree-no-target-both-wait__agreement_true",
+          "pass": true,
+          "detail": "got true"
+        },
+        {
+          "name": "agree-no-target-both-wait__decided_by_local",
+          "pass": true,
+          "detail": "got local"
+        },
+        {
+          "name": "agree-no-target-both-wait__winner_action_wait",
+          "pass": true,
+          "detail": "got wait"
+        },
+        {
+          "name": "agree-no-target-both-wait__decision_has_numeric_confidence",
+          "pass": true
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__does_not_throw",
+          "pass": true,
+          "detail": "Different targets, confidence gap under 5% — small enough to auto-resolve to the higher-confidence side without extra fanfare."
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__mode_FULL_DEBATE",
+          "pass": true,
+          "detail": "got FULL_DEBATE"
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__resolution_DISAGREE_AUTO_RESOLVE",
+          "pass": true,
+          "detail": "got DISAGREE_AUTO_RESOLVE"
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__agreement_false",
+          "pass": true,
+          "detail": "got false"
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__decided_by_cloud",
+          "pass": true,
+          "detail": "got cloud"
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__winner_action_click",
+          "pass": true,
+          "detail": "got click"
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__winner_target_#b",
+          "pass": true,
+          "detail": "got #b"
+        },
+        {
+          "name": "disagree-small-gap-auto-resolve__decision_has_numeric_confidence",
+          "pass": true
+        },
+        {
+          "name": "disagree-medium-gap-show-both__does_not_throw",
+          "pass": true,
+          "detail": "Confidence gap of 10 points (0.70 vs 0.80) — in the 5%-15% band where both sides should be shown to the user, not silently auto-resolved."
+        },
+        {
+          "name": "disagree-medium-gap-show-both__mode_FULL_DEBATE",
+          "pass": true,
+          "detail": "got FULL_DEBATE"
+        },
+        {
+          "name": "disagree-medium-gap-show-both__resolution_DISAGREE_SHOW_BOTH",
+          "pass": true,
+          "detail": "got DISAGREE_SHOW_BOTH"
+        },
+        {
+          "name": "disagree-medium-gap-show-both__agreement_false",
+          "pass": true,
+          "detail": "got false"
+        },
+        {
+          "name": "disagree-medium-gap-show-both__decided_by_cloud",
+          "pass": true,
+          "detail": "got cloud"
+        },
+        {
+          "name": "disagree-medium-gap-show-both__winner_action_click",
+          "pass": true,
+          "detail": "got click"
+        },
+        {
+          "name": "disagree-medium-gap-show-both__winner_target_#b",
+          "pass": true,
+          "detail": "got #b"
+        },
+        {
+          "name": "disagree-medium-gap-show-both__decision_has_numeric_confidence",
+          "pass": true
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__does_not_throw",
+          "pass": true,
+          "detail": "Confidence gap of 30 points (0.60 vs 0.90) — wide disagreement should be flagged strongly, recommending the user look before this executes."
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__mode_FULL_DEBATE",
+          "pass": true,
+          "detail": "got FULL_DEBATE"
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__resolution_DISAGREE_ASK_USER_RECOMMENDED",
+          "pass": true,
+          "detail": "got DISAGREE_ASK_USER_RECOMMENDED"
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__agreement_false",
+          "pass": true,
+          "detail": "got false"
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__decided_by_cloud",
+          "pass": true,
+          "detail": "got cloud"
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__winner_action_click",
+          "pass": true,
+          "detail": "got click"
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__winner_target_#pay-now",
+          "pass": true,
+          "detail": "got #pay-now"
+        },
+        {
+          "name": "disagree-large-gap-ask-user-recommended__decision_has_numeric_confidence",
+          "pass": true
+        },
+        {
+          "name": "local-only-degraded-cloud-backend-down__does_not_throw",
+          "pass": true,
+          "detail": "Cloud backend errors out (e.g. network failure) — debate should degrade gracefully to the local decision alone, not throw."
+        },
+        {
+          "name": "local-only-degraded-cloud-backend-down__mode_LOCAL_ONLY_DEGRADED",
+          "pass": true,
+          "detail": "got LOCAL_ONLY_DEGRADED"
+        },
+        {
+          "name": "local-only-degraded-cloud-backend-down__agreement_null",
+          "pass": true,
+          "detail": "got null"
+        },
+        {
+          "name": "local-only-degraded-cloud-backend-down__winner_action_fill_from_local",
+          "pass": true,
+          "detail": "got fill_from_local"
+        },
+        {
+          "name": "local-only-degraded-cloud-backend-down__decision_has_numeric_confidence",
+          "pass": true
+        },
+        {
+          "name": "cloud-only-degraded-local-model-unavailable__does_not_throw",
+          "pass": true,
+          "detail": "On-device WebLLM not available yet (e.g. not vendored, or model still loading) — debate should degrade gracefully to the cloud decision alone."
+        },
+        {
+          "name": "cloud-only-degraded-local-model-unavailable__mode_CLOUD_ONLY_DEGRADED",
+          "pass": true,
+          "detail": "got CLOUD_ONLY_DEGRADED"
+        },
+        {
+          "name": "cloud-only-degraded-local-model-unavailable__agreement_null",
+          "pass": true,
+          "detail": "got null"
+        },
+        {
+          "name": "cloud-only-degraded-local-model-unavailable__winner_action_click",
+          "pass": true,
+          "detail": "got click"
+        },
+        {
+          "name": "cloud-only-degraded-local-model-unavailable__winner_target_#submit",
+          "pass": true,
+          "detail": "got #submit"
+        },
+        {
+          "name": "cloud-only-degraded-local-model-unavailable__decision_has_numeric_confidence",
+          "pass": true
+        },
+        {
+          "name": "both-reasoners-fail__throws_when_both_reasoners_fail",
+          "pass": true,
+          "detail": "Both the local model and the cloud backend fail in the same step — there is nothing left to act on, so this must throw rather than silently returning a fabricated decision."
+        },
+        {
+          "name": "both-reasoners-fail__error_carries_both_underlying_messages",
+          "pass": true
+        }
+      ],
+      "scope": "agent/debateManager.js + agent/confidenceScorer.js run unmodified; only agentBackend.decideNextActionLocalLLM()/decideNextAction() are mocked per scenario (benchmark/fixtures/debate-scenarios.js). Every scenario passes evidence:{} so confidenceScorer.js's combineFactors() has only one present factor (modelSelfConfidence) and the scored confidence is deterministic. The real, multi-factor scoring behavior (checksum strength, HTTPS, domain reputation, etc.) is exercised implicitly wherever those factors are unit-tested elsewhere, not re-verified here."
+    },
+    {
+      "category": "Local screen-state perception (proxy for Visual context accuracy, 25% weight)",
+      "totalChecks": 24,
+      "passed": 23,
+      "failed": 1,
+      "checks": [
+        {
+          "name": "identical_frames_report_no_change",
+          "pass": true
+        },
+        {
+          "name": "dropdown_reported_as_localized_change",
+          "pass": true
+        },
+        {
+          "name": "navigation_reported_as_major_change",
+          "pass": true
+        },
+        {
+          "name": "viewport_resize_not_treated_as_comparable",
+          "pass": true
+        },
+        {
+          "name": "rotating_spinner_detected",
+          "pass": true
+        },
+        {
+          "name": "static_page_not_loading",
+          "pass": true
+        },
+        {
+          "name": "navigation_not_mistaken_for_spinner",
+          "pass": true
+        },
+        {
+          "name": "modal_detected",
+          "pass": true
+        },
+        {
+          "name": "modal_over_dark_page_detected",
+          "pass": true
+        },
+        {
+          "name": "normal_page_no_false_modal",
+          "pass": true
+        },
+        {
+          "name": "TRAP_dark_theme_no_false_modal",
+          "pass": true
+        },
+        {
+          "name": "TRAP_dark_chrome_no_false_modal",
+          "pass": true
+        },
+        {
+          "name": "TRAP_scroll_not_mistaken_for_modal",
+          "pass": true
+        },
+        {
+          "name": "modal_appearing_between_frames_high_confidence",
+          "pass": true
+        },
+        {
+          "name": "rendered_button_reported_painted",
+          "pass": true
+        },
+        {
+          "name": "text_block_reported_painted",
+          "pass": true
+        },
+        {
+          "name": "featureless_region_reported_unpainted",
+          "pass": true
+        },
+        {
+          "name": "tiny_box_fails_open",
+          "pass": true
+        },
+        {
+          "name": "report_flags_only_the_unpainted_element",
+          "pass": true,
+          "detail": "[\"ghost\"]"
+        },
+        {
+          "name": "loading_yields_wait_decision",
+          "pass": true
+        },
+        {
+          "name": "no_visible_change_after_click_is_flagged",
+          "pass": true
+        },
+        {
+          "name": "modal_yields_constrain_to_dialog",
+          "pass": true
+        },
+        {
+          "name": "successful_click_yields_no_intervention",
+          "pass": true
+        },
+        {
+          "name": "full_frame_analysis_under_250ms",
+          "pass": false,
+          "detail": "573ms at 1280x800"
+        }
+      ],
+      "latencyMs": 573,
+      "scope": "utils/visualStateEngine.js against synthetic scenes with known ground truth, including deliberate false-positive traps (dark theme, dark chrome, scroll). Synthetic scenes are not real screenshots: this validates the decision logic and catches regressions, it is not a claim of accuracy on arbitrary real websites."
+    },
+    {
+      "category": "Local icon classification (proxy for Visual context accuracy, 25% weight)",
+      "totalChecks": 4,
+      "passed": 3,
+      "failed": 1,
+      "checks": [
+        {
+          "name": "precision_when_answering_at_least_90pct",
+          "pass": true,
+          "detail": "100.0%"
+        },
+        {
+          "name": "coverage_at_least_70pct",
+          "pass": true,
+          "detail": "88.6%"
+        },
+        {
+          "name": "under_5ms_per_crop",
+          "pass": false,
+          "detail": "13.17ms"
+        },
+        {
+          "name": "model_under_50k_parameters",
+          "pass": true,
+          "detail": "6862 parameters"
+        }
+      ],
+      "coverage": 0.8857,
+      "precisionWhenAnswering": 1,
+      "declined": 8,
+      "msPerCrop": 13.171,
+      "modelParameters": 6862,
+      "perClass": {
+        "menu": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "close": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "search": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "cart": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "user": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "settings": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "chevron_left": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "chevron_right": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "plus": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "more": {
+          "answered": 4,
+          "correct": 4,
+          "total": 5
+        },
+        "download": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "heart": {
+          "answered": 3,
+          "correct": 3,
+          "total": 5
+        },
+        "play": {
+          "answered": 5,
+          "correct": 5,
+          "total": 5
+        },
+        "other": {
+          "answered": 3,
+          "correct": 3,
+          "total": 5
+        }
+      },
+      "reportedTrainingMetrics": {
+        "heldOut": 0.9154,
+        "stressOOD": 0.7689,
+        "shippingThreshold": 0.6
+      },
+      "scope": "Runs the shipped JS inference path (utils/iconClassifier.js + utils/iconModel.js) over 70 held-out synthetic crops. The model is trained on procedurally rendered glyphs, not real site icons, so real-world accuracy will be lower than these numbers — the confidence threshold is what keeps that gap safe rather than harmful. The full 3,500-sample evaluation is recorded in the model metadata."
+    }
+  ]
+}

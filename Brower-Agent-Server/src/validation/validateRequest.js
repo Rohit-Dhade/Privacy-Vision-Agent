@@ -12,8 +12,6 @@ const validateRequest = (req, res, next) => {
     }
 
     req.body = result.data;
-
-    console.log("Checking from validateRequest->", req.body)
     next();
 }
 
