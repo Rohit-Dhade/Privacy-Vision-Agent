@@ -4,89 +4,113 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Redaction Proof Verifier — Privacy-Vision-Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    background: #0f1420;
-    color: #e7ecf5;
-    margin: 0;
-    padding: 32px 16px;
+  :root {
+    --background: #ffffff; --foreground: #111827;
+    --primary: #3b82f6; --primary-hover: #2563eb; --primary-tint: #dbeafe;
+    --secondary: #10b981; --secondary-tint: #d1fae5;
+    --accent: #f59e0b; --accent-tint: #fef3c7;
+    --muted: #f3f4f6; --muted-foreground: #6b7280; --border: #e5e7eb;
+    --surface: #ffffff;
+    --on-fill: #ffffff;
+    --amber-deep: #d97706; --green-deep: #059669;
+    --error: #dc2626; --error-container: #fee2e2;
+    color-scheme: light;
   }
-  .container { max-width: 720px; margin: auto; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .subtitle { color: #93a1bd; font-size: 14px; margin-bottom: 24px; }
+  /* Flat dark mode — same key ('pv-theme') and same palette as the popup,
+     so both surfaces stay in sync. Set via <html data-theme="dark">. */
+  :root[data-theme="dark"] {
+    --background: #111827; --foreground: #f9fafb;
+    --primary: #60a5fa; --primary-hover: #93c5fd; --primary-tint: #1e3a8a;
+    --secondary: #34d399; --secondary-tint: #064e3b;
+    --accent: #fbbf24; --accent-tint: #78350f;
+    --muted: #1f2937; --muted-foreground: #9ca3af; --border: #374151;
+    --surface: #111827;
+    --on-fill: #111827;
+    --amber-deep: #fbbf24; --green-deep: #34d399;
+    --error: #f87171; --error-container: #7f1d1d;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Outfit', system-ui, sans-serif;
+    background: var(--muted);
+    color: var(--foreground);
+    margin: 0; padding: 40px 16px 48px;
+    min-height: 100vh;
+  }
+  .container { max-width: 720px; margin: auto; position: relative; }
+  .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .theme-toggle { margin-top: 0; min-height: 40px; padding: 8px 16px; font-size: 13px; flex-shrink: 0; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--primary-tint);
+    border-radius: 999px; padding: 6px 14px 6px 12px; margin-bottom: 14px;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--primary-hover);
+  }
+  .eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+  h1 { font-weight: 800; font-size: 32px; margin: 0 0 6px; letter-spacing: -0.02em; line-height: 1.15; }
+  h1 .grad { color: var(--primary); }
+  .subtitle { color: var(--muted-foreground); font-size: 14.5px; line-height: 1.6; margin-bottom: 24px; max-width: 62ch; }
   .card {
-    background: #171d2c;
-    border: 1px solid #2a3450;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 18px;
+    background: var(--surface);
+    border-radius: 8px; padding: 24px; margin-bottom: 18px;
   }
   label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
   textarea {
-    width: 100%;
-    box-sizing: border-box;
-    min-height: 160px;
-    background: #0c101a;
-    color: #d9e2f5;
-    border: 1px solid #2a3450;
-    border-radius: 8px;
-    padding: 10px;
-    font-family: "SF Mono", Consolas, monospace;
-    font-size: 12px;
-    resize: vertical;
+    width: 100%; min-height: 160px;
+    background: var(--muted); color: var(--foreground);
+    border: none; border-radius: 6px; padding: 12px;
+    font-family: inherit; font-size: 12.5px; resize: vertical;
   }
-  input[type="file"] { margin-top: 6px; }
+  textarea:focus { outline: none; background: var(--surface); border: 2px solid var(--primary); padding: 10px; }
+  input[type="file"] { margin-top: 10px; font-size: 13px; color: var(--muted-foreground); }
   button {
-    margin-top: 14px;
-    background: #2f6fed;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 11px 20px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
+    margin-top: 14px; min-height: 48px;
+    background: var(--primary); color: var(--on-fill);
+    border: none; border-radius: 6px; padding: 12px 24px;
+    font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
+    transition: all .2s ease;
   }
-  button:disabled { background: #3a4560; cursor: not-allowed; }
-  button.secondary { background: #24304b; border: 1px solid #3a4a70; }
+  button:hover { background: var(--primary-hover); transform: scale(1.05); }
+  button:active { transform: scale(.98); }
+  button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  button.secondary { background: var(--foreground); color: var(--background); }
+  button.secondary:hover { background: var(--primary); color: var(--on-fill); transform: scale(1.03); }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-  .tamper-note { color: #ffcf7a; font-size: 12px; margin-bottom: 10px; }
-  .result { margin-top: 18px; }
+  .tamper-note { color: var(--amber-deep); font-size: 12.5px; font-weight: 500; margin-bottom: 10px; }
+  .result { margin-top: 18px; background: var(--surface); border-radius: 8px; padding: 18px; }
   .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: 13px;
-    margin-bottom: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 13px; margin-bottom: 12px;
   }
-  .badge-pass { background: #113a24; color: #5fe0a0; border: 1px solid #1f6b45; }
-  .badge-fail { background: #3a1414; color: #ff8a8a; border: 1px solid #6b1f1f; }
-  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #232b41; font-size: 13px; }
+  .badge-pass { background: var(--secondary-tint); color: var(--green-deep); }
+  .badge-fail { background: var(--error-container); color: var(--error); }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 2px solid var(--muted); font-size: 13px; }
   .row:last-child { border-bottom: none; }
-  .row-label { color: #93a1bd; }
-  .row-val { font-weight: 700; }
-  .ok { color: #5fe0a0; }
-  .bad { color: #ff8a8a; }
-  .tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
-    gap: 3px;
-    margin-top: 10px;
-  }
+  .row-label { color: var(--muted-foreground); }
+  .row-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ok { color: var(--green-deep); } .bad { color: var(--error); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(24px, 1fr)); gap: 4px; margin-top: 10px; }
   .tile { width: 100%; aspect-ratio: 1; border-radius: 3px; }
-  .tile-ok { background: #1f6b45; }
-  .tile-bad { background: #6b1f1f; }
-  .hint { color: #6c7a99; font-size: 12px; line-height: 1.5; margin-top: 10px; }
-  .errlist { color: #ff8a8a; font-size: 12px; margin-top: 8px; }
+  .tile-ok { background: var(--secondary); } .tile-bad { background: var(--error); }
+  .hint { color: var(--muted-foreground); font-size: 12.5px; line-height: 1.6; margin-top: 12px; }
+  .hint strong { color: var(--foreground); }
+  .errlist { color: var(--error); font-size: 12px; margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>🔏 Redaction Proof Verifier</h1>
+  <div class="topbar">
+    <span class="eyebrow">Privacy proof · offline</span>
+    <button id="themeBtn" class="secondary theme-toggle" type="button">Dark mode</button>
+  </div>
+  <h1>Redaction Proof <span class="grad">Verifier</span></h1>
   <p class="subtitle">
     Independent, offline verification of a Privacy-Vision-Agent redaction proof.
     This page needs no server, no extension, and no network connection — it only

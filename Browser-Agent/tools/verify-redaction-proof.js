@@ -22,6 +22,7 @@
     input: document.getElementById('proofInput'),
     file: document.getElementById('proofFile'),
     btn: document.getElementById('verifyBtn'),
+    themeBtn: document.getElementById('themeBtn'),
     loadLatest: document.getElementById('loadLatestBtn'),
     tamper: document.getElementById('tamperBtn'),
     loadNote: document.getElementById('loadNote'),
@@ -169,6 +170,9 @@
   // Convenience when opened from the extension: popup.js stashes the most
   // recent proof in chrome.storage.session right before opening this page.
   // The verification that follows is exactly the same as for a pasted file.
+  // Convenience when opened from the extension: popup.js stashes the most
+  // recent proof in chrome.storage.session right before opening this page.
+  // The verification that follows is exactly the same as for a pasted file.
   const session = (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.session) ? chrome.storage.session : null;
   if (session) {
     session.get('pvLatestRedactionProof').then((res) => {
@@ -182,4 +186,60 @@
       });
     }).catch(() => {});
   }
+
+  // ---------- Flat dark mode (shared 'pv-theme' key with the popup) ----------
+  // Same source of truth as popup.js: chrome.storage.local when available
+  // (extension page), localStorage on file://, OS prefers-color-scheme
+  // when nothing is stored. External file on purpose (extension CSP).
+  const THEME_KEY = 'pv-theme';
+
+  function applyTheme(mode) {
+    const theme = mode === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    if (els.themeBtn) els.themeBtn.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  }
+
+  async function readStoredTheme() {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const res = await chrome.storage.local.get(THEME_KEY);
+        if (res && (res[THEME_KEY] === 'dark' || res[THEME_KEY] === 'light')) return res[THEME_KEY];
+      } else {
+        const local = window.localStorage.getItem(THEME_KEY);
+        if (local === 'dark' || local === 'light') return local;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  (async () => {
+    const stored = await readStoredTheme();
+    const fallback = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    applyTheme(stored || fallback);
+  })();
+
+  if (els.themeBtn) {
+    els.themeBtn.addEventListener('click', async () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.set({ [THEME_KEY]: next });
+        } else {
+          window.localStorage.setItem(THEME_KEY, next);
+        }
+      } catch (_) {}
+    });
+  }
+
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes && changes[THEME_KEY]) {
+          const next = changes[THEME_KEY].newValue;
+          if (next === 'dark' || next === 'light') applyTheme(next);
+        }
+      });
+    }
+  } catch (_) {}
 })();

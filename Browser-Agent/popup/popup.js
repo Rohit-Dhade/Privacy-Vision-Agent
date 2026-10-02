@@ -27,6 +27,8 @@ const SETTLE_DELAY_MS = 600; // let the page react to an action before re-analyz
 const MAX_VISUAL_WAITS = 3;
 
 const els = {
+  themeBtn: document.getElementById('themeBtn'),
+  themeBtnIcon: document.getElementById('themeBtnIcon'),
   settingsBtn: document.getElementById('settingsBtn'),
   settingsPanel: document.getElementById('settingsPanel'),
   backendUrlInput: document.getElementById('backendUrlInput'),
@@ -939,7 +941,7 @@ function renderElementsList(elements) {
     row.appendChild(label);
 
     const bboxLine = document.createElement('div');
-    bboxLine.style.color = '#737781';
+    bboxLine.style.color = 'var(--pv-on-surface-variant)';
     bboxLine.style.fontSize = '10px';
     bboxLine.textContent = `bbox: [${el.bbox.x}, ${el.bbox.y}, ${el.bbox.width}, ${el.bbox.height}]`;
     row.appendChild(bboxLine);
@@ -4888,3 +4890,62 @@ if (els.redactionProofVerifyLink) {
 }
 
 initSettings();
+
+// ---------- Flat dark mode (manual toggle + OS default) ----------
+// Single source of truth: chrome.storage.local 'pv-theme' ('light'|'dark').
+// Unset -> follow the OS prefers-color-scheme. The verifier page and the
+// on-page guide read the same key, so all three surfaces stay in sync.
+const THEME_STORAGE_KEY = 'pv-theme';
+
+function applyTheme(mode) {
+  const theme = mode === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = theme;
+  if (els.themeBtnIcon) els.themeBtnIcon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+  if (els.themeBtn) {
+    const label = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    els.themeBtn.title = label;
+    els.themeBtn.setAttribute('aria-label', label);
+  }
+}
+
+async function initTheme() {
+  let stored = null;
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const res = await chrome.storage.local.get(THEME_STORAGE_KEY);
+      stored = res ? res[THEME_STORAGE_KEY] : null;
+    } else {
+      stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    }
+  } catch (_) { stored = null; }
+  const fallback = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  applyTheme(stored === 'dark' || stored === 'light' ? stored : fallback);
+
+  // Stay in sync when the verifier page (same key) changes the theme.
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes && changes[THEME_STORAGE_KEY]) {
+          const next = changes[THEME_STORAGE_KEY].newValue;
+          if (next === 'dark' || next === 'light') applyTheme(next);
+        }
+      });
+    }
+  } catch (_) {}
+}
+
+if (els.themeBtn) {
+  els.themeBtn.addEventListener('click', async () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        await chrome.storage.local.set({ [THEME_STORAGE_KEY]: next });
+      } else {
+        window.localStorage.setItem(THEME_STORAGE_KEY, next);
+      }
+    } catch (_) {}
+  });
+}
+
+initTheme();

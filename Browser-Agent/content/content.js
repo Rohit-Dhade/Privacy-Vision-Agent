@@ -14,6 +14,34 @@
     userInteractions: []
   };
 
+  // ── Flat dark mode (shared 'pv-theme' key with the popup) ────────────────
+  // The guide card follows the extension theme, not the host page. Cached at
+  // load (content scripts can read chrome.storage.local) so the synchronous
+  // showFieldGuide() below can stamp it onto the card; kept fresh via
+  // storage.onChanged. Falls back to the OS prefers-color-scheme.
+  let pvGuideTheme = 'light';
+  (function initGuideTheme() {
+    try {
+      if (window.chrome && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get({ 'pv-theme': null }).then((res) => {
+          const stored = res && res['pv-theme'];
+          if (stored === 'dark' || stored === 'light') pvGuideTheme = stored;
+          else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) pvGuideTheme = 'dark';
+        }).catch(() => {});
+        if (chrome.storage.onChanged) {
+          chrome.storage.onChanged.addListener((changes, area) => {
+            if (area === 'local' && changes && changes['pv-theme']) {
+              const next = changes['pv-theme'].newValue;
+              if (next === 'dark' || next === 'light') pvGuideTheme = next;
+            }
+          });
+        }
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        pvGuideTheme = 'dark';
+      }
+    } catch (_) {}
+  })();
+
   // ── Lightweight User Interaction Tracker (Metadata Only) ──────────────────
   const MAX_INTERACTIONS = 20;
 
@@ -190,31 +218,24 @@
     const s = document.createElement('style');
     s.id = 'pv-guide-styles';
     s.textContent = `
-      /* Pulsing ring around the target input */
-      @keyframes pvRingPulse {
-        0%   { box-shadow: 0 0 0 0   rgba(0,85,184,.55), 0 0 0 0   rgba(0,85,184,.25); }
-        60%  { box-shadow: 0 0 0 6px rgba(0,85,184,.25), 0 0 0 14px rgba(0,85,184,0);  }
-        100% { box-shadow: 0 0 0 0   rgba(0,85,184,.55), 0 0 0 0   rgba(0,85,184,.25); }
-      }
+      /* Target-field marker — flat solid outline, no glow */
       .pv-field-active {
-        outline: 2.5px solid #0055b8 !important;
+        outline: 3px solid #3b82f6 !important;
         outline-offset: 2px !important;
-        animation: pvRingPulse 1.8s ease-in-out infinite !important;
-        transition: outline .15s ease !important;
         position: relative !important;
         z-index: 100 !important;
       }
 
-      /* Callout card */
+      /* Callout card — Flat: solid white block, no shadow */
       #pv-guide-card {
         position: absolute;
         z-index: 2147483640;
         width: 300px;
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.10);
-        border: 1.5px solid #dce7fb;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #ffffff;
+        color: #111827;
+        border-radius: 8px;
+        border: 2px solid #e5e7eb;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         overflow: visible;
         pointer-events: auto;
         transform-origin: top left;
@@ -234,11 +255,11 @@
         to   { opacity:0; transform: scale(.92) translateY(8px); }
       }
 
-      /* Card inner sections */
+      /* Card inner sections — flat solid blocks */
       .pv-card-header {
-        background: linear-gradient(135deg, #0055b8, #1a73e8);
-        border-radius: 10px 10px 0 0;
-        padding: 11px 14px 10px;
+        background: #3b82f6;
+        border-radius: 6px 6px 0 0;
+        padding: 12px 14px 11px;
         display: flex; align-items: center; gap: 8px;
       }
       .pv-card-header-icon {
@@ -248,64 +269,64 @@
         font-size: 13px; font-weight: 700; color: #fff; line-height: 1.25;
       }
       .pv-card-header-sub {
-        font-size: 10.5px; color: rgba(255,255,255,.8); margin-top:1px;
+        font-size: 10.5px; color: rgba(255,255,255,.82); margin-top:1px;
       }
       .pv-card-body { padding: 12px 14px 10px; }
       .pv-card-desc {
-        font-size: 12px; color: #3c4043; line-height: 1.5; margin-bottom: 8px;
+        font-size: 12.5px; color: #111827; line-height: 1.5; margin-bottom: 8px;
       }
       .pv-card-example {
-        background: #f1f3f4; border-radius: 6px;
-        padding: 7px 10px; margin-bottom: 10px;
+        background: #f3f4f6; border-radius: 6px;
+        padding: 8px 10px; margin-bottom: 10px;
       }
       .pv-card-example-label {
-        font-size: 10px; font-weight: 700; color: #5f6368;
-        text-transform: uppercase; letter-spacing: .5px; margin-bottom:3px;
+        font-size: 10px; font-weight: 700; color: #6b7280;
+        text-transform: uppercase; letter-spacing: .06em; margin-bottom:3px;
       }
       .pv-card-example-val {
-        font-size: 11px; font-family: "Roboto Mono", "Courier New", monospace;
-        color: #174ea6; word-break: break-all; line-height:1.4;
+        font-size: 11.5px; font-weight: 600;
+        color: #1d4ed8; word-break: break-all; line-height:1.4;
       }
       .pv-card-footer {
-        border-top: 1px solid #e8eaed;
-        padding: 8px 14px;
+        border-top: 2px solid #e5e7eb;
+        padding: 9px 14px;
         display: flex; align-items: center; justify-content: space-between;
         gap: 8px;
       }
       .pv-card-hint {
-        font-size: 10.5px; color: #80868b; flex: 1;
+        font-size: 11px; color: #6b7280; flex: 1;
       }
       .pv-card-done-btn {
-        background: #0055b8; color: #fff;
+        background: #3b82f6; color: #fff;
         border: none; border-radius: 6px;
-        padding: 5px 12px; font-size: 11.5px; font-weight: 600;
+        padding: 8px 14px; font-size: 12px; font-weight: 600;
         cursor: pointer; flex-shrink: 0;
-        transition: background .15s;
+        transition: transform .2s, background .2s;
       }
-      .pv-card-done-btn:hover { background: #1a73e8; }
+      .pv-card-done-btn:hover { background: #2563eb; transform: scale(1.05); }
 
-      /* Vernacular language toggle + text-to-speech controls */
+      /* Vernacular language toggle + text-to-speech controls — flat */
       .pv-card-lang-row {
         display: flex; align-items: center; gap: 5px;
-        padding: 7px 14px; background: #f1f3f4;
-        border-bottom: 1px solid #e8eaed;
+        padding: 8px 14px; background: #f3f4f6;
+        border-bottom: 2px solid #e5e7eb;
       }
       .pv-lang-btn {
-        background: #fff; color: #0055b8;
-        border: 1px solid #c9d7ee; border-radius: 20px;
-        padding: 2px 10px; font-size: 10.5px; font-weight: 600;
-        cursor: pointer; transition: background .15s, color .15s;
+        background: #fff; color: #1d4ed8;
+        border: 2px solid #e5e7eb; border-radius: 6px;
+        padding: 3px 10px; font-size: 10.5px; font-weight: 600;
+        cursor: pointer; transition: all .2s;
       }
-      .pv-lang-btn:hover { background: #eaf1fd; }
-      .pv-lang-btn-active { background: #0055b8; color: #fff; border-color: #0055b8; }
+      .pv-lang-btn:hover { transform: scale(1.05); }
+      .pv-lang-btn-active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
       .pv-tts-btn {
-        background: #fff; border: 1px solid #c9d7ee;
-        border-radius: 50%; width: 24px; height: 24px; line-height: 1;
+        background: #fff; border: 2px solid #e5e7eb; color: #111827;
+        border-radius: 6px; width: 28px; height: 28px; line-height: 1;
         font-size: 12px; cursor: pointer; flex-shrink: 0;
         display: flex; align-items: center; justify-content: center;
-        transition: background .15s; margin-left: auto;
+        transition: transform .2s; margin-left: auto;
       }
-      .pv-tts-btn:hover { background: #eaf1fd; }
+      .pv-tts-btn:hover { transform: scale(1.05); }
 
       /* SVG connector line */
       #pv-guide-svg {
@@ -316,8 +337,8 @@
         top: 0; left: 0;
       }
       #pv-guide-svg .pv-connector {
-        stroke: #0055b8;
-        stroke-width: 2;
+        stroke: #3b82f6;
+        stroke-width: 3;
         fill: none;
         stroke-dasharray: 6 4;
         animation: pvDash 1.2s linear infinite;
@@ -337,9 +358,9 @@
       #pv-guide-spotlight {
         position: absolute;
         border-radius: 6px;
-        box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
+        border: 3px solid #3b82f6;
         pointer-events: none;
-        transition: all .35s cubic-bezier(.22,.9,.36,1);
+        transition: all .2s ease;
       }
       @keyframes pvFadeIn {
         from { opacity:0; } to { opacity:1; }
@@ -350,10 +371,40 @@
         display: flex; gap: 5px; align-items: center; padding: 0 14px 9px;
       }
       .pv-dot {
-        width: 6px; height: 6px; border-radius: 50%;
-        background: #dadce0; transition: background .2s, transform .2s;
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #d1d5db; transition: transform .2s;
       }
-      .pv-dot.active { background: #0055b8; transform: scale(1.3); }
+      .pv-dot.active { background: #3b82f6; transform: scale(1.3); }
+
+      /* Flat dark mode — follows the extension theme (data-theme on the card,
+         data-pv-guide-theme on the field/spotlight/connector so the host
+         page's own <html> is never touched) */
+      #pv-guide-card[data-theme="dark"] {
+        background: #1f2937;
+        color: #f9fafb;
+        border-color: #374151;
+      }
+      #pv-guide-card[data-theme="dark"] .pv-card-header { background: #60a5fa; }
+      #pv-guide-card[data-theme="dark"] .pv-card-header-icon,
+      #pv-guide-card[data-theme="dark"] .pv-card-header-title { color: #111827; }
+      #pv-guide-card[data-theme="dark"] .pv-card-header-sub { color: rgba(17,24,39,.75); }
+      #pv-guide-card[data-theme="dark"] .pv-card-desc { color: #f9fafb; }
+      #pv-guide-card[data-theme="dark"] .pv-card-example { background: #111827; }
+      #pv-guide-card[data-theme="dark"] .pv-card-example-label { color: #9ca3af; }
+      #pv-guide-card[data-theme="dark"] .pv-card-example-val { color: #93c5fd; }
+      #pv-guide-card[data-theme="dark"] .pv-card-footer { border-top-color: #374151; }
+      #pv-guide-card[data-theme="dark"] .pv-card-hint { color: #9ca3af; }
+      #pv-guide-card[data-theme="dark"] .pv-card-done-btn { background: #60a5fa; color: #111827; }
+      #pv-guide-card[data-theme="dark"] .pv-card-done-btn:hover { background: #93c5fd; }
+      #pv-guide-card[data-theme="dark"] .pv-card-lang-row { background: #111827; border-bottom-color: #374151; }
+      #pv-guide-card[data-theme="dark"] .pv-lang-btn { background: #374151; color: #bfdbfe; border-color: #4b5563; }
+      #pv-guide-card[data-theme="dark"] .pv-lang-btn-active { background: #60a5fa; color: #111827; border-color: #60a5fa; }
+      #pv-guide-card[data-theme="dark"] .pv-tts-btn { background: #374151; border-color: #4b5563; color: #f9fafb; }
+      #pv-guide-card[data-theme="dark"] .pv-dot { background: #4b5563; }
+      #pv-guide-card[data-theme="dark"] .pv-dot.active { background: #60a5fa; }
+      .pv-field-active[data-pv-guide-theme="dark"] { outline-color: #60a5fa !important; }
+      #pv-guide-spotlight[data-pv-guide-theme="dark"] { border-color: #60a5fa; }
+      #pv-guide-svg[data-pv-guide-theme="dark"] .pv-connector { stroke: #60a5fa; }
     `;
     document.head.appendChild(s);
   }
@@ -523,6 +574,7 @@
 
     const spotlight = document.createElement('div');
     spotlight.id = 'pv-guide-spotlight';
+    spotlight.setAttribute('data-pv-guide-theme', pvGuideTheme);
     backdrop.appendChild(spotlight);
 
     function updateSpotlight() {
@@ -535,13 +587,15 @@
     }
     updateSpotlight();
 
-    // 2. Pulsing outline on element
+    // 2. Flat solid outline on element (dark variant via attribute)
     el.classList.add('pv-field-active');
+    el.setAttribute('data-pv-guide-theme', pvGuideTheme);
     setTimeout(() => el.focus(), 200);
 
     // 3. Build callout card
     const card = document.createElement('div');
     card.id = 'pv-guide-card';
+    card.setAttribute('data-theme', pvGuideTheme);
     const langPillsHtml = languageOrder.length > 1
       ? languageOrder.map((lt) => `<button type="button" class="pv-lang-btn${lt === activeLang ? ' pv-lang-btn-active' : ''}" data-lang="${lt}">${escapeHtml(translations[lt].label)}</button>`).join('')
       : '';
@@ -661,6 +715,7 @@
     // 5. SVG animated dashed connector line
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.id = 'pv-guide-svg';
+    svg.setAttribute('data-pv-guide-theme', pvGuideTheme);
     svg.style.width  = '1px';
     svg.style.height = '1px';
     document.body.appendChild(svg);
@@ -680,7 +735,7 @@
     marker.setAttribute('orient', 'auto');
     const arrowPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     arrowPoly.setAttribute('points', '0 0, 8 3, 0 6');
-    arrowPoly.setAttribute('fill', '#0055b8');
+    arrowPoly.setAttribute('fill', pvGuideTheme === 'dark' ? '#60a5fa' : '#3b82f6');
     marker.appendChild(arrowPoly);
     defs.appendChild(marker);
     svg.appendChild(defs);
@@ -756,7 +811,7 @@
     ['pv-guide-card', 'pv-guide-svg', 'pv-guide-backdrop'].forEach((id) => {
       document.getElementById(id)?.remove();
     });
-    document.querySelectorAll('.pv-field-active').forEach((e) => e.classList.remove('pv-field-active'));
+    document.querySelectorAll('.pv-field-active').forEach((e) => { e.classList.remove('pv-field-active'); e.removeAttribute('data-pv-guide-theme'); });
     window.__BA_state.guideCleanup = null;
   }
 

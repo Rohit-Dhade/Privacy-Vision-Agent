@@ -131,7 +131,7 @@
       wrap.style.gap = '10px';
       wrap.style.padding = '12px';
       wrap.style.border = isHighRisk
-        ? '1.5px solid #d93025'
+        ? '1.5px solid #dc2626'
         : (isWarning ? '1.5px solid #e8a33d' : '1.5px solid var(--pv-primary-container)');
       wrap.style.borderRadius = 'var(--pv-radius)';
       wrap.style.backgroundColor = 'var(--pv-surface-bright)';
@@ -146,14 +146,14 @@
       const icon = document.createElement('span');
       icon.className = 'material-symbols-outlined';
       icon.style.fontSize = '20px';
-      icon.style.color = isHighRisk ? '#d93025' : (isWarning ? '#b06a00' : 'var(--pv-primary)');
+      icon.style.color = isHighRisk ? '#dc2626' : (isWarning ? '#d97706' : 'var(--pv-primary)');
       icon.textContent = isPayment ? 'credit_card' : (isPhishing ? 'gpp_maybe' : (isWarning ? 'warning' : 'verified_user'));
       header.appendChild(icon);
 
       const titleEl = document.createElement('span');
       titleEl.style.fontWeight = '700';
       titleEl.style.fontSize = '13px';
-      titleEl.style.color = isHighRisk ? '#d93025' : (isWarning ? '#b06a00' : 'var(--pv-primary)');
+      titleEl.style.color = isHighRisk ? '#dc2626' : (isWarning ? '#d97706' : 'var(--pv-primary)');
       titleEl.textContent = title;
       header.appendChild(titleEl);
 
@@ -174,7 +174,7 @@
           ? '🛡️ Possible Phishing Site — Autofill Blocked'
           : (isWarning ? '⚠️ Site Trust Warning' : '👉 Review & Authorize Action'));
       descBox.innerHTML = `
-        <div style="font-weight:600; margin-bottom:4px; color:${isHighRisk ? '#b31412' : (isWarning ? '#8a5300' : 'var(--pv-primary-container)')};">
+        <div style="font-weight:600; margin-bottom:4px; color:${isHighRisk ? '#991b1b' : (isWarning ? '#d97706' : 'var(--pv-primary-container)')};">
           ${descHeading}
         </div>
         <div>${promptMessage}</div>
@@ -193,8 +193,8 @@
       confirmBtn.type = 'button';
       confirmBtn.className = 'pv-btn pv-btn-primary';
       if (isHighRisk) {
-        confirmBtn.style.backgroundColor = '#d93025';
-        confirmBtn.style.borderColor = '#d93025';
+        confirmBtn.style.backgroundColor = '#dc2626';
+        confirmBtn.style.borderColor = '#dc2626';
       }
       confirmBtn.style.width = '100%';
       confirmBtn.textContent = (isPhishing || isWarning) ? actionLabel : `Yes, Click "${actionLabel}"`;
