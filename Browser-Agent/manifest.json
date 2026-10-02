@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Privacy-Preserving Browser Agent (Local)",
+  "name": "Privacy Vision Agent",
   "version": "0.1.0",
-  "description": "Local-only browser agent: extracts interactive DOM elements, detects PII on-device, and shows a redacted screenshot. No data ever leaves the browser.",
+  "description": "Privacy-first vision browser agent. Detects & redacts PII and faces on-device, with local auto-fill & human-in-the-loop safety.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -20,7 +20,7 @@
     "service_worker": "background/service-worker.js"
   },
   "action": {
-    "default_title": "Browser Agent (Local)",
+    "default_title": "Privacy Vision Agent",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

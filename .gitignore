@@ -1,0 +1,14 @@
+# Production build artifacts
+dist/
+Browser-Agent/dist/
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
+# Operating system files
+.DS_Store
+Thumbs.db

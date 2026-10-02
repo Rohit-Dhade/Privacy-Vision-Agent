@@ -116,23 +116,31 @@ function buildCompactExecutionState(actionHistory) {
 
 /**
  * Creates a minimal DOM skeleton for the VLM prompt.
- * Keeps only: id, link, type, and text (when present).
+ * Keeps semantic identifiers, redaction tags, and interaction states while pruning internal bloat.
  */
 function buildCompactDomSkeleton(domSkeleton) {
     if (!domSkeleton) return null;
 
     const compact = {
+        url: domSkeleton.url,
         elements: Array.isArray(domSkeleton.elements)
             ? domSkeleton.elements.map(el => {
                 const item = {
                     id: el.id,
-                    link: el.link ?? null,
                     type: el.type
                 };
 
-                if (el.text) {
-                    item.text = el.text;
-                }
+                if (el.tag) item.tag = el.tag;
+                if (el.selector) item.selector = el.selector;
+                if (el.link != null) item.link = el.link;
+                if (el.text) item.text = el.text;
+                if (el.ariaLabel) item.ariaLabel = el.ariaLabel;
+                if (el.placeholder) item.placeholder = el.placeholder;
+                if (el.hasValue !== undefined) item.hasValue = el.hasValue;
+                if (el.sensitive) item.sensitive = el.sensitive;
+                if (el.redactionTag) item.redactionTag = el.redactionTag;
+                if (el.enabled !== undefined) item.enabled = el.enabled;
+                if (el.visible !== undefined) item.visible = el.visible;
 
                 return item;
             })
